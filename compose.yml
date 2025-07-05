@@ -1,0 +1,40 @@
+services:
+  # frontend:
+  #   build:
+  #     context: .
+  #     dockerfile: frontend/react.dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - REACT_APP_API_URL=http://localhost:4000/api
+  #   depends_on:
+  #     - backend
+
+  backend:
+    container_name: phishion-backend
+    image: phishion-backend:latest
+    build:
+      context: ./backend
+      dockerfile: flask.dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - VIRUSTOTAL_API_KEY=bae984ee8f57479cd5a8d49e3c07966065a4b979825dbc4a5ae827959493669e
+      - DATABASE_URL=postgresql://phishion:phishion@db:5432/phishion_db
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=phishion
+      - POSTGRES_PASSWORD=phishion
+      - POSTGRES_DB=phishion_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
+    driver: local
