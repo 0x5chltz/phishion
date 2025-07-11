@@ -66,7 +66,7 @@ Build **phishion** from the source and install dependencies:
    ```bash
    git clone https://github.com/0x5chltz/phishion
 
-2. **Navigate to the project directory::**
+2. **Navigate to the project directory:**
 
    ```bash
    cd phishion
@@ -76,21 +76,22 @@ Build **phishion** from the source and install dependencies:
     **Using** npm:
     ```bash
     npm install
-
+    ```
     **Using** pip:
     ```bash
     pip install -r backend/requirements.txt
+    ```
+    
 
 ## Usage
 
-Run the project with:
-    
-    **Using** npm:
-    ```bash
-    npm start
+Run the project with:    
 
-    **Using** docker:
-    ```bash
-    docker-compose up --build
-
-
+**Using** npm:
+```bash
+npm start
+```
+**Using** docker:
+```bash
+docker-compose up --build
+```
