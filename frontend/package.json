@@ -41,16 +41,16 @@
     "next": "12.2.5",
     "nouislider": "14.7.0",
     "prop-types": "15.8.1",
-    "react": ">=16.0.0",
+    "react": "17.0.2",
     "react-datetime": "3.1.1",
-    "react-dom": ">=16.0.0",
+    "react-dom": "17.0.2",
     "react-slick": "0.29.0",
     "sass": "1.66.1",
     "styled-components": "5.3.5",
     "webpack": "5.88.2"
   },
   "peerDependencies": {
-    "react": ">=16.0.0",
-    "react-dom": ">=16.0.0"
+    "react": "17.0.2",
+    "react-dom": "17.0.2"
   }
 }
