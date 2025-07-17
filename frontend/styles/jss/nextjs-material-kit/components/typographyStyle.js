@@ -10,7 +10,8 @@ import {
 const typographyStyle = {
   defaultFontStyle: {
     ...defaultFont,
-    fontSize: "14px"
+    fontFamily: "Share Tech Mono",
+    fontSize: "14px",
   },
   defaultHeaderMargins: {
     marginTop: "20px",

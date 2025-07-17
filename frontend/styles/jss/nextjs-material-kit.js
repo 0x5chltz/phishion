@@ -82,10 +82,11 @@ const card = {
   borderRadius: "3px",
   color: "rgba(0, 0, 0, 0.87)",
   background: "#fff",
+  fontFamily: "Share Tech Mono",
 };
 
 const defaultFont = {
-  fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+  fontFamily: "Share Tech Mono",
   fontWeight: "300",
   lineHeight: "1.5em",
 };
@@ -208,7 +209,7 @@ const title = {
   margin: "1.75rem 0 0.875rem",
   textDecoration: "none",
   fontWeight: "700",
-  fontFamily: `"Roboto Slab", "Times New Roman", serif`,
+  fontFamily: `"Share Tech Mono", "Roboto Slab", "Times New Roman", serif`,
 };
 
 const cardTitle = {

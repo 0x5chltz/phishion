@@ -30,7 +30,7 @@ export default function HowSection() {
           <GridItem xs={12} sm={12} md={4}>
             <InfoArea
               title="Inspect"
-              description="Analyze the content and context of the message."
+              description="Let's dive deep into that URL like it's a treasure map leading to lost riches or something."
               icon={ZoomIn}
               iconColor="info"
               vertical
@@ -38,8 +38,8 @@ export default function HowSection() {
           </GridItem>
           <GridItem xs={12} sm={12} md={4}>
             <InfoArea
-              title="Akurat"
-              description="model yang telah dilatih untuk mendeteksi phising."
+              title="Spot on"
+              description="API is the ultimate URL chef, throwing over 70 antivirus engines into the pot and stirring up a delectable stew of aggregated URLs that even your grandma would love!"
               icon={MyLocation}
               iconColor="success"
               vertical
@@ -47,8 +47,8 @@ export default function HowSection() {
           </GridItem>
           <GridItem xs={12} sm={12} md={4}>
             <InfoArea
-              title="Cepat"
-              description="Dapatkan hasil deteksi dalam hitungan detik."
+              title="Rapid"
+              description="Get your detection results quicker than you can say 'abracadabra!'"
               icon={AlarmOn}
               iconColor="danger"
               vertical

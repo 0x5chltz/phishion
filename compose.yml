@@ -1,14 +1,21 @@
 services:
-  # frontend:
-  #   build:
-  #     context: .
-  #     dockerfile: frontend/react.dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - REACT_APP_API_URL=http://localhost:4000/api
-  #   depends_on:
-  #     - backend
+
+  frontend:
+    container_name: phishion-frontend
+    image: phishion-frontend:latest
+    build:
+      context: ./frontend
+      dockerfile: next.dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_BACKEND_name=api
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
 
   backend:
     container_name: phishion-backend

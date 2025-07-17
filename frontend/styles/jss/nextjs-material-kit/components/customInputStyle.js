@@ -13,7 +13,7 @@ const customInputStyle = {
   },
   underline: {
     "&:hover:not($disabled):before,&:before": {
-      borderColor: "#D2D2D2 !important",
+      borderColor: "rgb(0, 200, 255) !important",
       borderWidth: "1px !important"
     },
     "&:after": {
@@ -65,11 +65,11 @@ const customInputStyle = {
     }
   },
   input: {
-    color: "#495057",
+    color: "rgb(255, 255, 255)",
     height: "unset",
     "&,&::placeholder": {
       fontSize: "14px",
-      fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+      fontFamily: '"Share Tech Mono", "Roboto", "Helvetica", "Arial", sans-serif',
       fontWeight: "400",
       lineHeight: "1.42857",
       opacity: "1"

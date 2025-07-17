@@ -10,8 +10,7 @@ const inspectPageStyle = {
     zIndex: "2",
     position: "relative",
     paddingTop: "20vh",
-    color: "#FFFFFF",
-    paddingBottom: "200px"
+    paddingBottom: "20vh"
   },
   cardHidden: {
     opacity: "0",
@@ -68,6 +67,7 @@ const inspectPageStyle = {
     marginTop: "0",
     width: "100%",
     transform: "none",
+    color: "rgb(0, 200, 255)",
     left: "0",
     top: "0",
     height: "100%",
@@ -77,10 +77,11 @@ const inspectPageStyle = {
   divider: {
     marginTop: "30px",
     marginBottom: "0px",
-    textAlign: "center"
+    textAlign: "center",
   },
   cardFooter: {
     paddingTop: "0rem",
+    fontFamily: '"Share Tech Mono", "Roboto", "Helvetica", "Arial", sans-serif',
     border: "0",
     borderRadius: "6px",
     justifyContent: "center !important"
@@ -91,14 +92,13 @@ const inspectPageStyle = {
     padding: "0"
   },
   inputIconsColor: {
-    color: "#495057"
+    color: "rgb(0, 200, 255)",
   },
   icon: {
     width: "17px",
     height: "17px",
-    marginRight: "4px"
+    marginRight: "4px",
   },
-  ...modalStyle,
   label: {
     color: "rgba(0, 0, 0, 0.26)",
     cursor: "pointer",

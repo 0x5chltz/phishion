@@ -1,19 +1,12 @@
 'use client'
 import { use, useState } from 'react'
+import { useRouter } from 'next/router';
 import axios from 'axios';
 import React from "react";
 // @material-ui/core components
 import { makeStyles } from "@material-ui/core/styles";
 import InputAdornment from "@material-ui/core/InputAdornment";
-import Icon from "@material-ui/core/Icon";
 import Popover from "@material-ui/core/Popover";
-
-// import IconButton from "@material-ui/core/IconButton";
-// import Dialog from "@material-ui/core/Dialog";
-// import DialogTitle from "@material-ui/core/DialogTitle";
-// import DialogContent from "@material-ui/core/DialogContent";
-// import DialogActions from "@material-ui/core/DialogActions";
-// import Slide from "@material-ui/core/Slide";
 
 // @material-ui/icons
 import Email from "@material-ui/icons/Email";
@@ -35,14 +28,13 @@ import CustomInput from "/components/CustomInput/CustomInput.js";
 // import styles from "/styles/jss/nextjs-material-kit/pages/landingPageSections/productStyle.js";
 import styles from "/styles/jss/nextjs-material-kit/pages/inspectPage.js";
 
-import { Adb, Android, Person, SportsRugbyTwoTone } from "@material-ui/icons";
-import { Value } from 'sass';
 // import { Link } from '@material-ui/core';
 
 const useStyles = makeStyles(styles);
 
 export default function InspectSection() {
   const classes = useStyles();
+  const router = useRouter();
   const [anchorElBottom, setAnchorElBottom] = React.useState(null);
   const [cardAnimaton, setCardAnimation] = React.useState("cardHidden");
   React.useEffect(() => {
@@ -55,8 +47,43 @@ export default function InspectSection() {
   // environtment variable
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
-  const [users  , setUsers] = useState([]);
   const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [users  , setUsers] = useState([]);
+
+  const handleScan = async (e) => {
+    if (!url) return;
+
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+        const res = await fetch(`${apiUrl}/${backendname}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+
+        const data = await res.json();
+
+        localStorage.setItem("scanResult", JSON.stringify(data));
+        
+        router.push("/result");
+      } catch (err) {
+        alert("Gagal menghubungi server");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setUrl(text);
+    } catch (err) {
+      console.error("Gagal mengambil clipboard:", err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -77,9 +104,9 @@ export default function InspectSection() {
       <GridContainer justify="flex-start">
         <GridItem xs={12} sm={6} md={4}>
           <Card className={classes[cardAnimaton]}>
-            <form className={classes.form}>
-              <CardHeader color="primary" className={classes.cardHeader}>
-                <h4>Phishion AI</h4>
+            <form onSubmit={handleScan} className={classes.form}>
+              <CardHeader className={classes.cardHeader}>
+                <h4>Phishion</h4>
               </CardHeader>
               <CardBody>
                 <CustomInput
@@ -92,9 +119,10 @@ export default function InspectSection() {
                     type: "url",
                     value: url,
                     onChange: e => setUrl(e.target.value),
+                    required: true,
                     endAdornment: (
                       <InputAdornment position="end">
-                        <Link className={classes.inputIconsColor} />
+                        <Link onClick={handlePasteFromClipboard} className={classes.inputIconsColor} />
                       </InputAdornment>
                     )
                   }}
@@ -117,10 +145,10 @@ export default function InspectSection() {
                 />
               </CardBody>
               <CardFooter className={classes.cardFooter}>
-                <Button  color="info" round>
+                <Button type="submit" disabled={loading} color="info" round>
                   <Search className={classes.icons} /> Inspect
                 </Button>
-                <Button onClick={handleOpenUsers}>
+                {/* <Button onClick={handleOpenUsers}>
                   Check Users
                 </Button>
                 <Popover
@@ -153,7 +181,7 @@ export default function InspectSection() {
                       />
                     ))}
                   </List>
-                </Popover>
+                </Popover> */}
               </CardFooter>
             </form>
           </Card>
