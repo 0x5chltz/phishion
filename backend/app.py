@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, make_response
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
 from os import environ
 import requests
@@ -83,28 +83,63 @@ def delete_user(user_id):
         return make_response(jsonify({"error": str(e)}), 500)
 
 # Virus total API
-url = "https://www.virustotal.com/api/v3/urls"
+VIRUSTOTAL_API_KEY = environ.get('VIRUSTOTAL_API_KEY')
+if not VIRUSTOTAL_API_KEY:
+    raise ValueError("VIRUSTOTAL_API_KEY environment variable is not set")
 
-headers = {
-    "accept": "application/json",
-    "x-apikey": environ.get('VIRUSTOTAL_API_KEY')
-}
+# route to scan a URL using VirusTotal API
 @app.route('/api/scan', methods=['POST'])
+@cross_origin() 
 def scan_url():
+    if request.method == 'OPTIONS':
+        return make_response(jsonify({"message": "CORS preflight"}), 200)
     try:
         data = request.get_json()
         url_to_scan = data.get('url')
+
         if not url_to_scan:
             return make_response(jsonify({"error": "URL is required"}), 400)
 
-        response = requests.post(url, headers=headers, json={"url": url_to_scan})
-        if response.status_code == 200:
-            return jsonify(response.json())
-        else:
-            return make_response(jsonify({"error": "Failed to scan URL"}), response.status_code)
+        response = requests.post(
+            'https://www.virustotal.com/api/v3/urls',
+            headers={
+                "x-apikey": VIRUSTOTAL_API_KEY
+            },
+            data={"url": url_to_scan}
+        )
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to submit URL"}), 500
+        
+        scan_result = response.json()
+        raw_id = scan_result["data"]["id"]
+        url_id = raw_id.split('-')[1]
 
+        return get_scan_result(url_id)
+    
     except Exception as e:
         return make_response(jsonify({"error": str(e)}), 500)
-
+    
+# route to get the scan result by ID
+@app.route('/api/scan/<url_id>', methods=['GET'])
+def get_scan_result(url_id):
+    try:
+        response = requests.get(
+            f'https://www.virustotal.com/api/v3/urls/{url_id}',
+            headers={
+                "accept": "application/json",
+                "x-apikey": VIRUSTOTAL_API_KEY
+            }
+        )
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to retrieve scan result"}), 500
+        
+        return jsonify({
+            "url_id": url_id,
+            "scan_result": response.json()
+        })
+    
+    except Exception as e:
+        return make_response(jsonify({"error": str(e)}), 500)
+    
 with app.app_context():
     db.create_all()

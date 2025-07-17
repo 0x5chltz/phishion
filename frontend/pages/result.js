@@ -10,13 +10,14 @@ import { makeStyles } from "@material-ui/core/styles";
 import Parallax from "/components/Parallax/ParallaxInspect.js";
 
 // sections for this page
-import InspectSection from "/pages-sections/InspectPage-Sections/InspectSection.js";
-export default function Inspect() {
+import ResultSection from "/pages-sections/ResultPage-Sections/ResultSection.js";
+
+export default function Result() {
 
   return (
     <div>
       <Parallax image="/img/background_inspect2.png">
-        <InspectSection />
+        <ResultSection />
         </Parallax>
     </div>
     );

@@ -1,6 +1,6 @@
 const cardStyle = {
   card: {
-    border: "1px solid rgb(0, 200, 255)",
+    border: "0",
     marginBottom: "30px",
     marginTop: "30px",
     borderRadius: "6px",

@@ -2,7 +2,7 @@ const tooltipsStyle = {
   tooltip: {
     padding: "10px 15px",
     minWidth: "130px",
-    color: "#555555",
+    color: "rgba(0, 0, 0, 0.87)",
     lineHeight: "1.7em",
     background: "#FFFFFF",
     border: "none",
