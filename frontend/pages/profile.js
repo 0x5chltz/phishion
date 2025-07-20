@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from 'react';
+
 // nodejs library that concatenates classes
 import classNames from "classnames";
 // @material-ui/core components
@@ -23,18 +24,62 @@ const useStyles = makeStyles(styles);
 
 export default function ProfilePage(props) {
   const classes = useStyles();
+
+  const [user, setUser] = useState(null);
+  const [isDeleted, setIsDeleted] = useState(false);
+
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
+
+  useEffect(() => {
+    fetch(`${apiUrl}/${backendname}/userinfo`, {
+      credentials: "include",
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Not logged in");
+        return res.json();
+      })
+      .then((data) => setUser(data))
+      .catch((err) => {
+        console.error("Unauthorized", err);
+        setUser(null);
+      });
+  }, []);
+
+  const handleDeleteAccount = async () => {
+  try {
+    const res = await fetch(`${apiUrl}/api/delete`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+
+    if (res.ok) {
+      setUser(null);
+      setIsDeleted(true);
+    } else {
+      const data = await res.json();
+      console.error("Delete failed:", data);
+      alert("Gagal menghapus akun.");
+    }
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Terjadi kesalahan.");
+  }
+};
+
+  
   const { ...rest } = props;
   const imageClasses = classNames(
     classes.imgRaised,
     classes.imgRoundedCircle,
     classes.imgFluid
   );
-  const navImageClasses = classNames(classes.imgRounded, classes.imgGallery);
   return (
     <div>
       <Header
         color="transparent"
-        brand="Phishion AI"
+        brand="Phishion"
         rightLinks={<HeaderLinks />}
         fixed
         changeColorOnScroll={{
@@ -49,6 +94,7 @@ export default function ProfilePage(props) {
           <div className={classes.container}>
             <GridContainer justify="center">
               <GridItem xs={12} sm={12} md={6}>
+                {user ? (
                 <div className={classes.profile}>
                   <div>
                     <img
@@ -58,143 +104,32 @@ export default function ProfilePage(props) {
                     />
                   </div>
                   <div className={classes.name}>
-                    <h3 className={classes.title}>Muhammad Sulthon Nurbahari</h3>
-                    <h6>1002230041</h6>
-                    <Button justIcon link className={classes.margin5}>
-                      <i className={"fab fa-twitter"} />
+                    <h3 className={classes.title}>{user.username}</h3>
+                    <h6>User</h6>
+                  </div>
+                    <Button color="danger" onClick={handleDeleteAccount}>
+                      delete account
                     </Button>
-                    <Button justIcon link className={classes.margin5}>
-                      <i className={"fab fa-instagram"} />
-                    </Button>
-                    <Button justIcon link className={classes.margin5}>
-                      <i className={"fab fa-facebook"} />
-                    </Button>
+                </div>
+                ) : isDeleted ? (
+                <div className={classes.profile}>
+                  <div>
+                    <img
+                      src="/img/faces/profile.png"
+                      alt="..."
+                      className={imageClasses}
+                    />
+                  </div>
+                  <div className={classes.name}>
+                    <h3 className={classes.title}>Guest</h3>
+                    <h6>Anonymous User</h6>
                   </div>
                 </div>
-              </GridItem>
-            </GridContainer>
-            <div className={classes.description}>
-              <p>
-                An artist of considerable range, Chet Faker — the name taken by
-                Melbourne-raised, Brooklyn-based Nick Murphy — writes, performs
-                and records all of his own music, giving it a warm, intimate
-                feel with a solid groove structure.{" "}
-              </p>
-            </div>
-            <GridContainer justify="center">
-              <GridItem xs={12} sm={12} md={8} className={classes.navWrapper}>
-                <NavPills
-                  alignCenter
-                  color="primary"
-                  tabs={[
-                    {
-                      tabButton: "Studio",
-                      tabIcon: Camera,
-                      tabContent: (
-                        <GridContainer justify="center">
-                          <GridItem xs={12} sm={12} md={4}>
-                            <img
-                              alt="..."
-                              src="/img/examples/studio-1.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/studio-2.jpg"
-                              className={navImageClasses}
-                            />
-                          </GridItem>
-                          <GridItem xs={12} sm={12} md={4}>
-                            <img
-                              alt="..."
-                              src="/img/examples/studio-5.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/studio-4.jpg"
-                              className={navImageClasses}
-                            />
-                          </GridItem>
-                        </GridContainer>
-                      )
-                    },
-                    {
-                      tabButton: "Work",
-                      tabIcon: Palette,
-                      tabContent: (
-                        <GridContainer justify="center">
-                          <GridItem xs={12} sm={12} md={4}>
-                            <img
-                              alt="..."
-                              src="/img/examples/olu-eletu.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/clem-onojeghuo.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/cynthia-del-rio.jpg"
-                              className={navImageClasses}
-                            />
-                          </GridItem>
-                          <GridItem xs={12} sm={12} md={4}>
-                            <img
-                              alt="..."
-                              src="/img/examples/mariya-georgieva.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/clem-onojegaw.jpg"
-                              className={navImageClasses}
-                            />
-                          </GridItem>
-                        </GridContainer>
-                      )
-                    },
-                    {
-                      tabButton: "Favorite",
-                      tabIcon: Favorite,
-                      tabContent: (
-                        <GridContainer justify="center">
-                          <GridItem xs={12} sm={12} md={4}>
-                            <img
-                              alt="..."
-                              src="/img/examples/mariya-georgieva.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/studio-3.jpg"
-                              className={navImageClasses}
-                            />
-                          </GridItem>
-                          <GridItem xs={12} sm={12} md={4}>
-                            <img
-                              alt="..."
-                              src="/img/examples/clem-onojeghuo.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/olu-eletu.jpg"
-                              className={navImageClasses}
-                            />
-                            <img
-                              alt="..."
-                              src="/img/examples/studio-1.jpg"
-                              className={navImageClasses}
-                            />
-                          </GridItem>
-                        </GridContainer>
-                      )
-                    }
-                  ]}
-                />
+                ) : (
+                  <p style={{ textAlign: "center", marginTop: "20px" }}>
+                    Loading user data...
+                  </p>
+                ) }
               </GridItem>
             </GridContainer>
           </div>

@@ -25,8 +25,6 @@ import Divider from "@material-ui/core/Divider";
 
 import styles from "/styles/jss/nextjs-material-kit/pages/inspectPage.js";
 
-// import { Link } from '@material-ui/core';
-
 const useStyles = makeStyles(styles);
 
 export default function ResultSection() {
@@ -38,31 +36,47 @@ export default function ResultSection() {
   const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [remaining, setRemaining] = useState(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("scanResult");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
+  const saved = localStorage.getItem("scanResult");
+  if (!saved) {
+    setResult({ error: "Tidak ada data hasil scan" });
+    return;
+  }
 
-        const url_id = parsed.url_id || parsed.id || null;
-        if (url_id) {
-          setLoading(true);
-          fetch(`${apiUrl}/${backendname}/scan/${url_id}`)
-            .then(res => res.json())
-            .then(data => setResult(data))
-            .catch(() => setResult({ error: "Gagal mengambil hasil scan dari server" }))
-            .finally(() => setLoading(false));
-        } else {
-          setResult({ error: "ID hasil scan tidak ditemukan" });
-        }
-      } catch {
-        setResult({ error: "Gagal memuat data dari localStorage" });
-      }
-    } else {
-      setResult({ error: "Tidak ada data hasil scan" });
+  try {
+    const parsed = JSON.parse(saved);
+    const url_id = parsed?.url_id || parsed?.id;
+
+    if (!url_id) {
+      setResult({ error: "ID hasil scan tidak ditemukan" });
+      return;
     }
-  }, []);
+
+    setLoading(true);
+
+    fetch(`${apiUrl}/${backendname}/scan/${url_id}`, {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setResult({ error: data.error });
+        } else {
+          setResult(data);
+          setRemaining(data.remaining ?? "Tidak diketahui");
+        }
+      })
+      .catch(() => {
+        setResult({ error: "Gagal mengambil hasil scan dari server" });
+      })
+      .finally(() => setLoading(false));
+  } catch (e) {
+    setResult({ error: "Gagal memuat data dari localStorage" });
+  }
+}, []);
+
 
   if (loading) {
     return (
@@ -136,9 +150,25 @@ export default function ResultSection() {
                     </ul>
                   </Typography>
                   <Typography style={{ marginBottom: 16 }}>
-                    <strong>Messages:</strong>{" "}<br></br>
-                    {result.scan_result.data?.attributes?.categories?.Webroot || result.scan_result.data?.attributes?.categories?.Sophos || "Reputation: " + result.scan_result.data?.attributes?.reputation || result.scan_result.data?.attributes?.html_meta?.description || "Tidak ada detail"}
-
+                    <strong>Messages:</strong>{" "}
+                    <br></br>
+                    {result.scan_result.data?.attributes?.html_meta?.description || " "}
+                    <br></br>
+                    {" The URL reputation is " + result.scan_result.data?.attributes?.reputation || ""}.
+                    <br></br>
+                    The URL potentionally{" "}
+                    {result.scan_result.data?.attributes?.categories?.Webroot ||
+                      result.scan_result.data?.attributes?.categories?.Sophos ||
+                      result.scan_result.data?.attributes?.categories?.BitDefender ||
+                      result.scan_result.data?.attributes?.categories?.Kaspersky ||
+                      "Not found"}.
+                    <br></br>
+                    {" The generator is " + result.scan_result.data?.attributes?.html_meta?.generator || ""}
+                    <br></br>
+                    </Typography>
+                    <Typography style={{ marginBottom: 16 }}>
+                    <strong>Scans Remaining:</strong>{" "}
+                    {remaining !== null ? remaining : "-"} scans left.
                   </Typography>
                 </>
               )}
