@@ -23,13 +23,18 @@ import styles from "/styles/jss/nextjs-material-kit/pages/loginPage.js";
 
 const useStyles = makeStyles(styles);
 
-export default function LoginPage(props) {
+  const LoginPage = (props) => {
   const [cardAnimaton, setCardAnimation] = React.useState("cardHidden");
   setTimeout(function () {
     setCardAnimation("");
   }, 700);
   const classes = useStyles();
   const { ...rest } = props;
+  const handleLogin = () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+      window.open(`${apiUrl}/login/google`, "__selfs");
+  };
+
   return (
     <div>
       <Header
@@ -57,6 +62,12 @@ export default function LoginPage(props) {
                   </CardHeader>
                   <p className={classes.divider}>Or Be Classical</p>
                   <CardBody>
+                    <button
+                      onClick={handleLogin}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+                    >
+                      Login with Google
+                    </button>
                     <CustomInput
                       labelText="Email..."
                       id="email"
@@ -106,3 +117,5 @@ export default function LoginPage(props) {
     </div>
   );
 }
+
+export default LoginPage;
