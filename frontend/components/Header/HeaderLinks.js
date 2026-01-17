@@ -7,7 +7,8 @@ import { makeStyles } from "@material-ui/core/styles";
 import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import Icon from "@material-ui/core/Icon";
-
+// @material-ui/icons
+import Login from "@material-ui/icons/Login"
 // core components
 import Button from "/components/CustomButtons/Button.js";
 
@@ -77,7 +78,7 @@ export default function HeaderLinks(props) {
             target="_self"
             className={classes.navLink}
           >
-            <Icon className={classes.icons}>dashboard</Icon> Login
+            <Login className={classes.icons}/> Login
           </Button>
         </ListItem>
       )}

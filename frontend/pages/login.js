@@ -3,10 +3,13 @@ import React from "react";
 import { makeStyles } from "@material-ui/core/styles";
 import InputAdornment from "@material-ui/core/InputAdornment";
 import Icon from "@material-ui/core/Icon";
+//import Icon2 from "@mui/icons-material";
 // @material-ui/icons
 import Email from "@material-ui/icons/Email";
 import People from "@material-ui/icons/People";
-// core components
+// @mui/icons-material
+import Google from "@material-ui/icons/Google";
+// Core components
 import Header from "/components/Header/Header.js";
 import HeaderLinks from "/components/Header/HeaderLinks.js";
 import Footer from "/components/Footer/Footer.js";
@@ -62,12 +65,11 @@ const useStyles = makeStyles(styles);
                   </CardHeader>
                   <p className={classes.divider}>Or Be Classical</p>
                   <CardBody>
-                    <button
+                    <Button
                       onClick={handleLogin}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-                    >
-                      Login with Google
-                    </button>
+                       size="sm">
+			<Google className={classes.icons} /> Sign in with Google
+                    </Button>
                     <CustomInput
                       labelText="Email..."
                       id="email"
