@@ -1,0 +1,45 @@
+services:
+  frontend:
+    container_name: phishion_frontend
+    image: phishion_frontend:latest
+    build:
+       context: ./frontend
+       dockerfile: next.dockerfile
+    ports:
+       - "3000:3000"
+    environment:
+       - REACT_APP_API_URL=http://localhost:4000/api
+    depends_on:
+       - backend
+
+  backend:
+    container_name: phishion-backend
+    image: phishion-backend:latest
+    build:
+      context: ./backend
+      dockerfile: flask.dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID)
+      - GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET)
+      - SECRET_KEY=$(SECRET_KEY)
+      - VIRUSTOTAL_API_KEY=$(VIRUSTOTAL_API_KEY)
+      - DATABASE_URL=$(DATABASE_URL)
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=POSTGRES_USER
+      - POSTGRES_PASSWORD=POSTGRES_PASSWORD
+      - POSTGRES_DB=POSTGRES_DB
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
+    driver: local
