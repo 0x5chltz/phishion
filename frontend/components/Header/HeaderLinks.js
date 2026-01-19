@@ -8,7 +8,8 @@ import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import Icon from "@material-ui/core/Icon";
 // @material-ui/icons
-import Login from "@material-ui/icons/Login"
+import Login from "@material-ui/icons/Login";
+import Logout from "@material-ui/icons/Logout";
 // core components
 import Button from "/components/CustomButtons/Button.js";
 
@@ -18,7 +19,7 @@ const useStyles = makeStyles(styles);
 
 export default function HeaderLinks(props) {
   const classes = useStyles();
-  const [username, setUsername] = useState(null); // null = belum tahu, string = diketahui
+  const [username, setUsername] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -70,7 +71,7 @@ export default function HeaderLinks(props) {
       </ListItem>
 
       {/* Only show login button if Guest */}
-      {username === "Guest" && (
+      {username === "Guest" ? (
         <ListItem className={classes.listItem}>
           <Button
             href="/login"
@@ -81,7 +82,18 @@ export default function HeaderLinks(props) {
             <Login className={classes.icons}/> Login
           </Button>
         </ListItem>
-      )}
+      ) : (
+	<ListItem className={classes.listItem}>
+	 <Button
+	  href="/logout"
+	  color="transparent"
+	  target="_self"
+	  className={classes.navLink}
+	 >
+	  <Logout className={classes.icons} /> Logout
+	 </Button>
+	</ListItem>
+	)}
     </List>
   );
 }

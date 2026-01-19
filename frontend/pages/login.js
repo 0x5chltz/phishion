@@ -23,15 +23,21 @@ import CardFooter from "/components/Card/CardFooter.js";
 import CustomInput from "/components/CustomInput/CustomInput.js";
 
 import styles from "/styles/jss/nextjs-material-kit/pages/loginPage.js";
+// typography style
+import stylesTypo from "/styles/jss/nextjs-material-kit/pages/componentsSections/typographyStyle.js";
 
 const useStyles = makeStyles(styles);
+const useStylesTypo = makeStyles(stylesTypo);
 
   const LoginPage = (props) => {
   const [cardAnimaton, setCardAnimation] = React.useState("cardHidden");
   setTimeout(function () {
     setCardAnimation("");
   }, 700);
+
   const classes = useStyles();
+  const classes_typo = useStylesTypo();
+
   const { ...rest } = props;
   const handleLogin = () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -61,7 +67,7 @@ const useStyles = makeStyles(styles);
               <Card className={classes[cardAnimaton]}>
                 <form className={classes.form}>
                   <CardHeader color="primary" className={classes.cardHeader}>
-                    <h4>Login</h4>
+                    <h4 className={classes_typo.title}>Login</h4>
                   </CardHeader>
                   <p className={classes.divider}>Or Be Classical</p>
                   <CardBody>
