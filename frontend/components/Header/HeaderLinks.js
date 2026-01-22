@@ -1,5 +1,6 @@
 /*eslint-disable*/
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import Link from "next/link";
 
 // @material-ui/core components
@@ -19,29 +20,36 @@ const useStyles = makeStyles(styles);
 
 export default function HeaderLinks(props) {
   const classes = useStyles();
+  const router = useRouter();
+  const [ url, setUrl ] = useState("");
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
+
   const [username, setUsername] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/userinfo", {
+        const res = await fetch(`${apiUrl}/${backendname}/userinfo`, {
           credentials: "include",
         });
+
         if (!res.ok) throw new Error("Not authenticated");
-        const data = await res.json();
-        if (data.username) {
-          setUsername(data.username);
-        } else {
-          setUsername("Guest");
-        }
-      } catch (err) {
+        
+		const data = await res.json();
+        setUsername(data.username || "Guest");
+        } catch (err) {
         console.error("Failed to fetch user:", err);
         setUsername("Guest");
-      }
-    };
+		}
+	  };
+    
+	fetchUser();
+}, []);
 
-    fetchUser();
-  }, []);
+  const isAuthenticated = username && username !== "Guest";
+  const notAuthenticated = username && username === "Guest";
 
   return (
     <List className={classes.list}>
@@ -70,8 +78,8 @@ export default function HeaderLinks(props) {
         </Button>
       </ListItem>
 
-      {/* Only show login button if Guest */}
-      {username === "Guest" ? (
+      {/* Login / Logout */}
+      {notAuthenticated && (
         <ListItem className={classes.listItem}>
           <Button
             href="/login"
@@ -82,18 +90,20 @@ export default function HeaderLinks(props) {
             <Login className={classes.icons}/> Login
           </Button>
         </ListItem>
-      ) : (
-	<ListItem className={classes.listItem}>
-	 <Button
-	  href="/logout"
-	  color="transparent"
-	  target="_self"
-	  className={classes.navLink}
-	 >
-	  <Logout className={classes.icons} /> Logout
-	 </Button>
-	</ListItem>
-	)}
+	  )}
+
+	  {isAuthenticated && (
+		<ListItem className={classes.listItem}>
+		 <Button
+		  href="/logout"
+		  color="transparent"
+		  target="_self"
+		  className={classes.navLink}
+		 >
+		  <Logout className={classes.icons} /> Logout
+		 </Button>
+		</ListItem>
+		)}
     </List>
   );
 }

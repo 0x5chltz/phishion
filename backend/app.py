@@ -7,22 +7,27 @@ from os import environ
 from datetime import datetime, date
 import requests
 
-app = Flask(__name__)
-app.secret_key = environ.get('SECRET_KEY')
+try:
+    app = Flask(__name__)
+    app.secret_key = environ.get('SECRET_KEY')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DATABASE_URL')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-CORS(app, supports_credentials=True)
-db = SQLAlchemy(app)
+    app.config['SQLALCHEMY_DATABASE_URI'] = environ.get('DATABASE_URL')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    CORS(app, supports_credentials=True)
+    db = SQLAlchemy(app)
 
-oauth = OAuth(app)
-google = oauth.register(
-    name='google',
-    client_id=environ.get('GOOGLE_CLIENT_ID'),
-    client_secret=environ.get('GOOGLE_CLIENT_SECRET'),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid email profile'},
-)
+    oauth = OAuth(app)
+    google = oauth.register(
+        name='google',
+        client_id=environ.get('GOOGLE_CLIENT_ID'),
+        client_secret=environ.get('GOOGLE_CLIENT_SECRET'),
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={'scope': 'openid email profile'},
+    )
+except Exception as e:
+    print(f"Error during app initialization: {str(e)}")
+    raise e
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -81,6 +86,14 @@ def authorize_google():
 
     return redirect("http://localhost:3000/dashboard")
 
+# route to logout user
+@app.route('/api/logout', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def logout_user():
+    session.clear()
+    return redirect("http://localhost:3000/")
+
+# route to get user info
 @app.route('/api/userinfo', methods=['GET'])
 def get_userinfo():
     username = session.get('username')

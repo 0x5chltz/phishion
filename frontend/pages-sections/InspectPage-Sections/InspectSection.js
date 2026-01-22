@@ -37,7 +37,7 @@ export default function InspectSection() {
 
   // Get user info
   useEffect(() => {
-    fetch(`${apiUrl}/api/userinfo`, {
+    fetch(`${apiUrl}/${backendname}/userinfo`, {
       credentials: "include",
     })
       .then((res) => {
