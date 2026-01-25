@@ -75,6 +75,7 @@ Build **phishion** from the source and install dependencies:
 
     **Using** npm:
     ```bash
+    cd frontend
     npm install
     ```
     **Using** pip:
@@ -89,7 +90,13 @@ Run the project with:
 
 **Using** npm:
 ```bash
+cd frontend
 npm start
+```
+**Using** flask:
+```bash
+cd backend
+flask run --port=4000
 ```
 **Using** docker:
 ```bash
