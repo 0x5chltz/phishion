@@ -28,7 +28,6 @@ except Exception as e:
     print(f"Error during app initialization: {str(e)}")
     raise e
 
-
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -245,6 +244,31 @@ def fetch_scan_result(url_id, remaining=None):
     except Exception as e:
         return make_response(jsonify({"error": str(e)}), 500)
 
+# Security Trails API
+SECURITYTRAILS_API_KEY = environ.get('SECURITYTRAILS_API_KEY')
+if not SECURITYTRAILS_API_KEY:
+    raise ValueError("SECURITYTRAILS_API_KEY environment variable is not set")
 
+# route to get subdomain info using Security Trails API
+@app.route('/api/domain/<hostname>', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_subdomain_info(hostname):
+    try:
+        response = requests.get(
+            f'https://api.securitytrails.com/v1/domain/{hostname}/subdomains?apikey={SECURITYTRAILS_API_KEY}',
+            headers={
+                "accept": "application/json"
+            }
+        )
+
+        if response.status_code != 200:
+            return jsonify({"error": "Failed to retrieve domain info"}), 500
+
+        domain_info = response.json()
+        return jsonify(domain_info)
+
+    except Exception as e:
+        return make_response(jsonify({"error": str(e)}), 500)
+    
 with app.app_context():
     db.create_all()
