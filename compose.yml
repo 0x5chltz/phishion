@@ -1,6 +1,6 @@
 services:
   frontend:
-    container_name: phishion_frontend
+    container_name: phishion-frontend
     image: phishion_frontend:latest
     build:
        context: ./frontend
@@ -21,11 +21,12 @@ services:
     ports:
       - "4000:4000"
     environment:
+      - DATABASE_URL=$(DATABASE_URL)
       - GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID)
       - GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET)
       - SECRET_KEY=$(SECRET_KEY)
       - VIRUSTOTAL_API_KEY=$(VIRUSTOTAL_API_KEY)
-      - DATABASE_URL=$(DATABASE_URL)
+      - SECURITYTRAILS_API_KEY=$(SECURITYTRAILS_API_KEY)
     depends_on:
       - db
 
