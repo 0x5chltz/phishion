@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
+import Router from 'next/router';
 // nodejs library that concatenates classes
 import classNames from "classnames";
 // @material-ui/core components
@@ -28,7 +28,6 @@ export default function ProfilePage(props) {
   const [user, setUser] = useState(null);
   const [isDeleted, setIsDeleted] = useState(false);
 
-
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
 
@@ -47,34 +46,13 @@ export default function ProfilePage(props) {
       });
   }, []);
 
-  const handleDeleteAccount = async () => {
-  try {
-    const res = await fetch(`${apiUrl}/api/delete`, {
-      method: 'POST',
-      credentials: 'include'
-    });
-
-    if (res.ok) {
-      setUser(null);
-      setIsDeleted(true);
-    } else {
-      const data = await res.json();
-      console.error("Delete failed:", data);
-      alert("Gagal menghapus akun.");
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Terjadi kesalahan.");
-  }
-};
-
-  
   const { ...rest } = props;
   const imageClasses = classNames(
     classes.imgRaised,
     classes.imgRoundedCircle,
     classes.imgFluid
   );
+
   return (
     <div>
       <Header
@@ -107,7 +85,7 @@ export default function ProfilePage(props) {
                     <h3 className={classes.title}>{user.username}</h3>
                     <h6>User</h6>
                   </div>
-                    <Button color="danger" onClick={handleDeleteAccount}>
+                    <Button color="danger" href="/delete">
                       delete account
                     </Button>
                 </div>
@@ -115,7 +93,7 @@ export default function ProfilePage(props) {
                 <div className={classes.profile}>
                   <div>
                     <img
-                      src="/img/faces/profile.png"
+                      src=""
                       alt="..."
                       className={imageClasses}
                     />
@@ -127,7 +105,7 @@ export default function ProfilePage(props) {
                 </div>
                 ) : (
                   <p style={{ textAlign: "center", marginTop: "20px" }}>
-                    Loading user data...
+                    Anonymous User
                   </p>
                 ) }
               </GridItem>
