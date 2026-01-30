@@ -35,21 +35,6 @@ export default function InspectSection() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Get user info
-  useEffect(() => {
-    fetch(`${apiUrl}/${backendname}/userinfo`, {
-      credentials: "include",
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Not logged in");
-        return res.json();
-      })
-      .then((data) => setUser(data))
-      .catch((err) => {
-        console.error("Unauthorized", err);
-      });
-  }, []);
-
   // Paste clipboard
   const handlePasteFromClipboard = async () => {
     try {
