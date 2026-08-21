@@ -1,3 +1,4 @@
+'use client';
 /*eslint-disable*/
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
@@ -9,8 +10,7 @@ import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import Icon from "@material-ui/core/Icon";
 // @material-ui/icons
-import Login from "@material-ui/icons/Login";
-import Logout from "@material-ui/icons/Logout";
+import ExitToApp from "@material-ui/icons/ExitToApp";
 // core components
 import Button from "/components/CustomButtons/Button.js";
 
@@ -38,6 +38,7 @@ export default function HeaderLinks(props) {
         if (!res.ok) throw new Error("Not authenticated");
         
 		const data = await res.json();
+		localStorage.setItem("Username", data.username);
         setUsername(data.username || "Guest");
         } catch (err) {
         console.error("Failed to fetch user:", err);
@@ -78,6 +79,18 @@ export default function HeaderLinks(props) {
         </Button>
       </ListItem>
 
+      {/* Subdomain discovery */}
+      <ListItem className={classes.listItem}>
+        <Button
+          href="/domains"
+          color="transparent"
+          target="_self"
+          className={classes.navLink}
+        >
+          <Icon className={classes.icons}>language</Icon> Domains
+        </Button>
+      </ListItem>
+
       {/* Login / Logout */}
       {notAuthenticated && (
         <ListItem className={classes.listItem}>
@@ -87,7 +100,7 @@ export default function HeaderLinks(props) {
             target="_self"
             className={classes.navLink}
           >
-            <Login className={classes.icons}/> Login
+            <ExitToApp className={classes.icons}/> Login
           </Button>
         </ListItem>
 	  )}
@@ -100,7 +113,7 @@ export default function HeaderLinks(props) {
 		  target="_self"
 		  className={classes.navLink}
 		 >
-		  <Logout className={classes.icons} /> Logout
+		  <ExitToApp className={classes.icons} /> Logout
 		 </Button>
 		</ListItem>
 		)}

@@ -1,13 +1,9 @@
+'use client';
 import React, { useEffect, useState } from 'react';
-import Router from 'next/router';
 // nodejs library that concatenates classes
 import classNames from "classnames";
 // @material-ui/core components
 import { makeStyles } from "@material-ui/core/styles";
-// @material-ui/icons
-import Camera from "@material-ui/icons/Camera";
-import Palette from "@material-ui/icons/Palette";
-import Favorite from "@material-ui/icons/Favorite";
 // core components
 import Header from "/components/Header/Header.js";
 import Footer from "/components/Footer/Footer.js";
@@ -15,7 +11,6 @@ import Button from "/components/CustomButtons/Button.js";
 import GridContainer from "/components/Grid/GridContainer.js";
 import GridItem from "/components/Grid/GridItem.js";
 import HeaderLinks from "/components/Header/HeaderLinks.js";
-import NavPills from "/components/NavPills/NavPills.js";
 import Parallax from "/components/Parallax/Parallax.js";
 
 import styles from "/styles/jss/nextjs-material-kit/pages/profilePage.js";
@@ -26,7 +21,6 @@ export default function ProfilePage(props) {
   const classes = useStyles();
 
   const [user, setUser] = useState(null);
-  const [isDeleted, setIsDeleted] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
   const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
@@ -88,20 +82,6 @@ export default function ProfilePage(props) {
                     <Button color="danger" href="/delete">
                       delete account
                     </Button>
-                </div>
-                ) : isDeleted ? (
-                <div className={classes.profile}>
-                  <div>
-                    <img
-                      src=""
-                      alt="..."
-                      className={imageClasses}
-                    />
-                  </div>
-                  <div className={classes.name}>
-                    <h3 className={classes.title}>Guest</h3>
-                    <h6>Anonymous User</h6>
-                  </div>
                 </div>
                 ) : (
                   <p style={{ textAlign: "center", marginTop: "20px" }}>

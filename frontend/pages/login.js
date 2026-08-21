@@ -8,7 +8,7 @@ import Icon from "@material-ui/core/Icon";
 import Email from "@material-ui/icons/Email";
 import People from "@material-ui/icons/People";
 // @mui/icons-material
-import Google from "@material-ui/icons/Google";
+import Language from "@material-ui/icons/Language";
 // Core components
 import Header from "/components/Header/Header.js";
 import HeaderLinks from "/components/Header/HeaderLinks.js";
@@ -74,7 +74,7 @@ const useStylesTypo = makeStyles(stylesTypo);
                     <Button
                       onClick={handleLogin}
                        size="sm">
-			<Google className={classes.icons} /> Sign in with Google
+			<Language className={classes.icons} /> Sign in with Google
                     </Button>
                     <CustomInput
                       labelText="Email..."

@@ -2,10 +2,15 @@ from flask import Flask, redirect, request, url_for, jsonify, make_response, ses
 from flask_cors import CORS, cross_origin
 from flask_sqlalchemy import SQLAlchemy
 from authlib.integrations.flask_client import OAuth
-from sqlalchemy import func
 from os import environ
-from datetime import datetime, date
+from datetime import datetime, date, time, timedelta
 import requests
+
+try:
+    from .validators import is_valid_hostname, is_valid_scan_url, normalize_hostname
+except ImportError:
+    # Docker copies backend/ as the application root.
+    from validators import is_valid_hostname, is_valid_scan_url, normalize_hostname
 
 try:
     app = Flask(__name__)
@@ -33,7 +38,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    scans = db.relationship('Scan', backref='user')
+    scans = db.relationship('Scan', backref='user', cascade='all, delete-orphan')
 
     def json(self):
         return {
@@ -42,12 +47,29 @@ class User(db.Model):
             'email': self.email
         }
 
+scan_user_scanned_at_index = db.Index(
+    'ix_scans_user_scanned_at', 'user_id', 'scanned_at'
+)
+
+
 class Scan(db.Model):
     __tablename__ = 'scans'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     scanned_url = db.Column(db.Text, nullable=False)
-    scanned_at = db.Column(db.DateTime, default=datetime.now)
+    scanned_at = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    __table_args__ = (scan_user_scanned_at_index,)
+
+
+def daily_scan_count(user_id):
+    """Count today's scans with an index-friendly timestamp range."""
+    start = datetime.combine(date.today(), time.min)
+    end = start + timedelta(days=1)
+    return Scan.query.filter(
+        Scan.user_id == user_id,
+        Scan.scanned_at >= start,
+        Scan.scanned_at < end,
+    ).count()
 
 # root route for the API
 @app.route('/api', methods=['GET'])
@@ -66,7 +88,7 @@ def login_google():
     
 @app.route('/callback/google')
 def authorize_google():
-    token = google.authorize_access_token()
+    google.authorize_access_token()
     userinfo_endpoint = google.server_metadata['userinfo_endpoint']
     resp = google.get(userinfo_endpoint)
     user_info = resp.json()
@@ -81,8 +103,6 @@ def authorize_google():
 
     session['username'] = username
     session['user_email'] = email
-    session['oauth_token'] = token
-
     return redirect("http://localhost:3000/dashboard")
 
 # route to logout user
@@ -94,6 +114,7 @@ def logout_user():
 
 # route to get user info
 @app.route('/api/userinfo', methods=['GET'])
+@cross_origin(supports_credentials=True)
 def get_userinfo():
     username = session.get('username')
     email = session.get('user_email')
@@ -132,12 +153,18 @@ VIRUSTOTAL_API_KEY = environ.get('VIRUSTOTAL_API_KEY')
 if not VIRUSTOTAL_API_KEY:
     raise ValueError("VIRUSTOTAL_API_KEY environment variable is not set")
 
+# timeout (seconds) applied to every outbound threat-intelligence request
+EXTERNAL_HTTP_TIMEOUT = 15
+
 # route to scan a URL using VirusTotal API
 @app.route('/api/scan', methods=['POST'])
 @cross_origin(supports_credentials=True)
 def scan_url():
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({"error": "Request body must be a JSON object"}), 400
+
         url_to_scan = data.get('url')
 
         email = session.get('user_email')
@@ -147,8 +174,9 @@ def scan_url():
 
         if not email or not username:
             return jsonify({"error": "User not authenticated, please log in"}), 401
-        if not url_to_scan:
-            return jsonify({"error": "Missing URL"}), 400
+        if not is_valid_scan_url(url_to_scan):
+            return jsonify({"error": "A valid HTTP(S) URL is required"}), 400
+        url_to_scan = url_to_scan.strip()
 
         user = User.query.filter_by(email=email).first()
         if not user:
@@ -156,28 +184,32 @@ def scan_url():
             db.session.add(user)
             db.session.commit()
 
-        today = date.today()
-        scan_count = Scan.query.filter(
-            Scan.user_id == user.id,
-            func.date(Scan.scanned_at) == today
-        ).count()
+        scan_count = daily_scan_count(user.id)
 
         if scan_count >= 5:
             return jsonify({"error": "Daily scan limit reached (5 per day)"}), 429
 
-        response = requests.post(
-            'https://www.virustotal.com/api/v3/urls',
-            headers={"x-apikey": VIRUSTOTAL_API_KEY},
-            data={"url": url_to_scan}
-        )
+        try:
+            response = requests.post(
+                'https://www.virustotal.com/api/v3/urls',
+                headers={"x-apikey": VIRUSTOTAL_API_KEY},
+                data={"url": url_to_scan},
+                timeout=EXTERNAL_HTTP_TIMEOUT
+            )
+        except requests.RequestException as e:
+            app.logger.error(f"VirusTotal submit request failed: {str(e)}")
+            return jsonify({"error": "VirusTotal service unavailable"}), 502
 
         if response.status_code != 200:
-            return jsonify({"error": "Failed to submit URL"}), 500
+            return jsonify({"error": "Failed to submit URL"}), 502
 
-        scan_result = response.json()
+        try:
+            scan_result = response.json()
+        except ValueError:
+            return jsonify({"error": "Invalid response from VirusTotal"}), 502
         raw_id = scan_result.get("data", {}).get("id")
         if not raw_id or '-' not in raw_id:
-            return jsonify({"error": "Invalid response from VirusTotal"}), 500
+            return jsonify({"error": "Invalid response from VirusTotal"}), 502
 
         url_id = raw_id.split('-')[1]
 
@@ -185,7 +217,7 @@ def scan_url():
         db.session.add(new_scan)
         db.session.commit()
 
-        return fetch_scan_result(url_id, remaining=5 - scan_count)
+        return fetch_scan_result(url_id, remaining=4 - scan_count)
 
     except Exception as e:
         app.logger.error(f"Error in scan_url {str(e)}")
@@ -205,31 +237,35 @@ def get_scan_result(url_id):
         if not user:
             return jsonify({"error": "User not found"}), 404
         
-        today = date.today()
-        scan_count = Scan.query.filter(
-            Scan.user_id == user.id,
-            func.date(Scan.scanned_at) == today
-        ).count()
+        scan_count = daily_scan_count(user.id)
 
-        return fetch_scan_result(url_id, remaining=5 - scan_count)
+        return fetch_scan_result(url_id, remaining=max(0, 5 - scan_count))
 
     except Exception as e:
         return make_response(jsonify({"error": str(e)}), 500)
 
 # function to fetch scan result from VirusTotal
-@cross_origin(supports_credentials=True)
 def fetch_scan_result(url_id, remaining=None):
     try:
-        vt_result = requests.get(
-            f'https://www.virustotal.com/api/v3/urls/{url_id}',
-            headers={
-                "x-apikey": VIRUSTOTAL_API_KEY
-            }
-        )
+        try:
+            vt_result = requests.get(
+                f'https://www.virustotal.com/api/v3/urls/{url_id}',
+                headers={
+                    "x-apikey": VIRUSTOTAL_API_KEY
+                },
+                timeout=EXTERNAL_HTTP_TIMEOUT
+            )
+        except requests.RequestException as e:
+            app.logger.error(f"VirusTotal fetch request failed: {str(e)}")
+            return jsonify({"error": "VirusTotal service unavailable"}), 502
+
         if vt_result.status_code != 200:
-            return jsonify({"error": "Failed to retrieve scan result"}), 500
+            return jsonify({"error": "Failed to retrieve scan result"}), 502
         
-        result = vt_result.json()
+        try:
+            result = vt_result.json()
+        except ValueError:
+            return jsonify({"error": "Invalid response from VirusTotal"}), 502
 
         response = {
             "url_id": url_id,
@@ -254,21 +290,44 @@ if not SECURITYTRAILS_API_KEY:
 @cross_origin(supports_credentials=True)
 def get_subdomain_info(hostname):
     try:
-        response = requests.get(
-            f'https://api.securitytrails.com/v1/domain/{hostname}/subdomains?apikey={SECURITYTRAILS_API_KEY}',
-            headers={
-                "accept": "application/json"
-            }
-        )
+        email = session.get('user_email')
+        if not email:
+            return jsonify({"error": "User not authenticated"}), 401
 
+        if not is_valid_hostname(hostname):
+            return jsonify({"error": "Invalid hostname"}), 400
+
+        normalized_hostname = normalize_hostname(hostname)
+
+        try:
+            response = requests.get(
+                f'https://api.securitytrails.com/v1/domain/{normalized_hostname}/subdomains',
+                headers={
+                    "accept": "application/json",
+                    "apikey": SECURITYTRAILS_API_KEY
+                },
+                timeout=EXTERNAL_HTTP_TIMEOUT
+            )
+        except requests.RequestException as e:
+            app.logger.error(f"SecurityTrails request failed: {str(e)}")
+            return jsonify({"error": "SecurityTrails service unavailable"}), 502
+
+        if response.status_code == 429:
+            return jsonify({"error": "SecurityTrails rate limit reached"}), 429
+        if response.status_code == 404:
+            return jsonify({"error": "Domain not found"}), 404
         if response.status_code != 200:
-            return jsonify({"error": "Failed to retrieve domain info"}), 500
+            return jsonify({"error": "Failed to retrieve domain info"}), 502
 
-        domain_info = response.json()
-        return jsonify(domain_info)
+        try:
+            domain_info = response.json()
+        except ValueError:
+            return jsonify({"error": "Invalid response from SecurityTrails"}), 502
+        return jsonify(domain_info), 200
 
     except Exception as e:
         return make_response(jsonify({"error": str(e)}), 500)
     
 with app.app_context():
     db.create_all()
+    scan_user_scanned_at_index.create(bind=db.engine, checkfirst=True)

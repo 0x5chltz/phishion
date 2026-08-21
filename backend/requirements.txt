@@ -6,3 +6,4 @@ requests
 Authlib
 Flask-OAuthlib
 python-dotenv
+gunicorn

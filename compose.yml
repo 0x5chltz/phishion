@@ -5,10 +5,14 @@ services:
     build:
        context: ./frontend
        dockerfile: next.dockerfile
+       args:
+         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+         NEXT_PUBLIC_BACKEND_NAME: ${NEXT_PUBLIC_BACKEND_NAME:-api}
     ports:
-       - "3000:3000"
+       - "${FRONTEND_PORT:-3000}:3000"
     environment:
-       - REACT_APP_API_URL=http://localhost:4000/api
+       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+       - NEXT_PUBLIC_BACKEND_NAME=${NEXT_PUBLIC_BACKEND_NAME:-api}
     depends_on:
        - backend
 
@@ -21,11 +25,12 @@ services:
     ports:
       - "4000:4000"
     environment:
-      - GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID)
-      - GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET)
-      - SECRET_KEY=$(SECRET_KEY)
-      - VIRUSTOTAL_API_KEY=$(VIRUSTOTAL_API_KEY)
-      - SECURITYTRAILS_API_KEY=$(SECURITYTRAILS_API_KEY)
+      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL is required}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:?VIRUSTOTAL_API_KEY is required}
+      - SECURITYTRAILS_API_KEY=${SECURITYTRAILS_API_KEY:?SECURITYTRAILS_API_KEY is required}
     depends_on:
       - db
 
@@ -34,9 +39,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=POSTGRES_USER
-      - POSTGRES_PASSWORD=POSTGRES_PASSWORD
-      - POSTGRES_DB=POSTGRES_DB
+      - POSTGRES_USER=${POSTGRES_USER:?POSTGRES_USER is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - POSTGRES_DB=${POSTGRES_DB:?POSTGRES_DB is required}
     volumes:
       - db_data:/var/lib/postgresql/data
 

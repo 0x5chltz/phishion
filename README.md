@@ -1,104 +1,145 @@
-# PHISHION
+# Phishion
 
-*Defend, Detect, Disrupt: Revolutionize Cybersecurity Today*
+Phishion is a phishing-analysis web application. Authenticated users submit URLs
+to VirusTotal, view the reputation results, and have every scan associated with
+their account. A SecurityTrails-backed endpoint supports domain / subdomain
+discovery for reconnaissance.
 
-![Last Commit](https://img.shields.io/badge/last%20commit-last%20saturday-blue)
-![JavaScript](https://img.shields.io/badge/javascript-69.9%25-gray)
-![Languages](https://img.shields.io/badge/languages-4-blue)
+> **For AI agents:** operational rules, coding conventions, the task-graph
+> workflow, and the definition of done live in [`AGENTS.md`](./AGENTS.md). Read it
+> before making changes. This README is the human-facing overview.
 
 ---
 
-### Built with the tools and technologies:
+## Architecture
 
-![Flask](https://img.shields.io/badge/-Flask-black?logo=flask)
-![JSON](https://img.shields.io/badge/-JSON-black?logo=json)
-![Markdown](https://img.shields.io/badge/-Markdown-black?logo=markdown)
-![npm](https://img.shields.io/badge/-npm-red?logo=npm)
-![JavaScript](https://img.shields.io/badge/-JavaScript-yellow?logo=javascript)
-![React](https://img.shields.io/badge/-React-skyblue?logo=react)
-![Webpack](https://img.shields.io/badge/-Webpack-lightblue?logo=webpack)
-![Python](https://img.shields.io/badge/-Python-blue?logo=python)
-![Axios](https://img.shields.io/badge/-Axios-purple?logo=axios)
-![Sass](https://img.shields.io/badge/-Sass-pink?logo=sass)
-![styled-components](https://img.shields.io/badge/-styledcomponents-lightpink)
-![PostgreSQL](https://img.shields.io/badge/-PostgreSQL-336791?logo=postgresql&logoColor=white)
+```
+Browser (localhost:3000)  ->  Flask API (localhost:4000/api/*)  ->  PostgreSQL
+                                                               \->  VirusTotal API
+                                                               \->  SecurityTrails API
+```
 
-## Table of Contents
+| Path | Responsibility |
+|------|----------------|
+| `backend/app.py` | Flask API, Google OAuth login, SQLAlchemy models (`User`, `Scan`), VirusTotal and SecurityTrails integrations. |
+| `frontend/pages/` | Next.js 12 Pages Router entry points (`index`, `login`, `inspect`, `result`, `profile`, `logout`, `delete`). |
+| `frontend/pages-sections/` | Feature UI + the client-side `fetch` calls to the API. |
+| `frontend/components/`, `frontend/styles/` | Material UI 4 / Creative Tim component system. |
+| `compose.yml` | `frontend`, `backend`, and PostgreSQL (`db`) services. |
 
-- [Overview](#overview)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Usage](#usage)
+Authentication uses a Flask session cookie. Any browser request that needs auth
+**must** set `credentials: "include"`; the backend enables CORS with
+`supports_credentials=True`.
 
-## Overview
+### Data model
 
-Phishion is a comprehensive cybersecurity platform designed to detect and analyze phishing threats through a seamless integration of backend services and a modern frontend interface. 
+- `User` — `id`, `username` (unique), `email` (unique), `scans` (relationship).
+- `Scan` — `id`, `user_id` (FK), `scanned_url`, `scanned_at`.
 
-It leverages containerized orchestration for scalable deployment and offers a rich set of React components built with Material Design principles for rapid UI development.
+Users are provisioned on first Google login. Each user is limited to **5 scans
+per calendar day** (enforced server-side in `/api/scan`).
 
-## Why Phishion?
+---
 
-This project simplifies the deployment and development of secure, scalable web applications. The core features include:
+## API reference
 
-- 🧩 **Containerized Orchestration**: Facilitates seamless deployment of core services like API and database within a containerized environment.
-- 🎨 **Modern UI Components**: Provides a responsive, Material Design-inspired frontend built with Next.js and React.
-- 🧱 **Reusable UI Library**: Offers a modular set of components for building cohesive, user-friendly interfaces.
-- 🔐 **Security & Inspection API**: Integrates URL inspection and threat analysis with VirusTotal for cybersecurity workflows.
-- 📚 **Documentation & Issue Tracking**: Maintains clarity with changelogs, templates, and comprehensive documentation.
-- 🚀 **Scalable Architecture**: Supports maintainability and growth through containerization and modular design.
+All routes are served under the backend root; user-specific routes require a
+valid session cookie.
 
-## Getting Started
+| Method | Route | Auth | Description |
+|--------|-------|------|-------------|
+| `GET`  | `/api` | no | Health / welcome message. |
+| `GET`  | `/login/google` | no | Start Google OAuth flow. |
+| `GET`  | `/callback/google` | no | OAuth callback; provisions user, sets session, redirects to the dashboard. |
+| `POST` | `/api/logout` | session | Clear the session. |
+| `GET`  | `/api/userinfo` | session | Return `{ username, email }` for the logged-in user. |
+| `POST` | `/api/delete` | session | Delete the logged-in user's account. |
+| `POST` | `/api/scan` | session | Submit a URL to VirusTotal (`{ "url": "..." }`), enforce the daily limit, persist the scan, return the analysis. |
+| `GET`  | `/api/scan/<url_id>` | session | Fetch a previously submitted VirusTotal analysis by id. |
+| `GET`  | `/api/domain/<hostname>` | session | Return SecurityTrails subdomains for a hostname. |
 
-### Prerequisites
+External calls (VirusTotal, SecurityTrails) run with request timeouts and
+non-2xx handling; callers receive JSON with an explicit HTTP status code.
 
-This project requires the following dependencies:
+---
 
-- **Programming Language**: JavaScript  
-- **Package Manager**: Npm, Pip
+## Runtime contracts
 
-## Installation
+### Backend environment variables (required)
 
-Build **phishion** from the source and install dependencies:
+- `DATABASE_URL`
+- `SECRET_KEY`
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- `VIRUSTOTAL_API_KEY`
+- `SECURITYTRAILS_API_KEY`
 
-1. **Clone the repository:**
+### PostgreSQL environment variables (required by Compose)
 
-   ```bash
-   git clone https://github.com/0x5chltz/phishion
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_DB`
 
-2. **Navigate to the project directory:**
+### Frontend configuration
 
-   ```bash
-   cd phishion
+- `NEXT_PUBLIC_API_URL` (default `http://localhost:4000`)
+- `NEXT_PUBLIC_BACKEND_NAME` (default `api`)
+- `FRONTEND_PORT` (optional Compose host port; default `3000`)
 
-3. **Install the dependencies:**
+> Never hardcode credentials, database passwords, API keys, or OAuth secrets.
+> `.env*` files are git-ignored and must not be read or committed.
 
-    **Using** npm:
-    ```bash
-    cd frontend
-    npm install
-    ```
-    **Using** pip:
-    ```bash
-    pip install -r backend/requirements.txt
-    ```
-    
+---
 
-## Usage
+## Development
 
-Run the project with:    
+### Frontend
 
-**Using** npm:
 ```bash
 cd frontend
-npm start
+npm install
+npm run dev      # dev server on :3000
+npm run build    # production build (required to pass before shipping)
 ```
-**Using** flask:
+
+### Backend (use a virtual environment)
+
 ```bash
-cd backend
-flask run --port=4000
+python -m venv .venv
+.venv/bin/pip install -r backend/requirements.txt
+FLASK_APP=backend/app.py .venv/bin/flask run --port=4000
 ```
-**Using** docker:
+
+### Full stack
+
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
+
+---
+
+## Verification
+
+The frontend `npm test` command is still a placeholder. Before declaring work
+done, run the backend unit tests, syntax checks, and frontend production build:
+
+```bash
+python -m unittest discover -s backend/tests -v
+python -m py_compile backend/app.py backend/validators.py
+cd frontend && npm run build            # frontend production build
+```
+
+Add focused tests alongside new behaviour when practical.
+
+---
+
+## Contributing
+
+- Inspect `git status` and the relevant diff before editing; preserve
+  pre-existing uncommitted changes.
+- Keep API responses JSON with explicit HTTP status codes.
+- Validate request data before any database or network operation.
+- Add timeouts and handle non-2xx responses for every external HTTP call.
+- Do not commit or push without explicit approval.
+
+See [`AGENTS.md`](./AGENTS.md) for the full task-graph workflow and definition of
+done.
