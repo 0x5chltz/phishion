@@ -59,11 +59,13 @@ def create_app(config_name=None):
     from .routes.domains import bp as domains_bp
     from .routes.health import bp as health_bp
     from .routes.scans import bp as scans_bp
+    from .routes.features import bp as features_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(scans_bp)
     app.register_blueprint(domains_bp)
+    app.register_blueprint(features_bp)
 
     @app.before_request
     def request_context():

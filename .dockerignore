@@ -1,0 +1,11 @@
+.git
+.github
+.hermes
+.venv
+.env*
+frontend/node_modules
+frontend/.next
+frontend/out
+backend/__pycache__
+backend/tests/__pycache__
+**/*.py[cod]

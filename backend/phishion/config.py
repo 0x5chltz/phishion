@@ -20,6 +20,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     EXTERNAL_HTTP_TIMEOUT = float(os.getenv("EXTERNAL_HTTP_TIMEOUT", "15"))
     DAILY_SCAN_LIMIT = int(os.getenv("DAILY_SCAN_LIMIT", "5"))
+    MAX_BATCH_SIZE = int(os.getenv("MAX_BATCH_SIZE", "10"))
     CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "300"))
     REDIS_URL = os.getenv("REDIS_URL", "")
     JSON_SORT_KEYS = False
