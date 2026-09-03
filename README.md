@@ -34,7 +34,13 @@ Authentication uses a Flask session cookie. Any browser request that needs auth
 ### Data model
 
 - `User` — `id`, `username` (unique), `email` (unique), `scans` (relationship).
-- `Scan` — `id`, `user_id` (FK), `scanned_url`, `scanned_at`.
+- `Scan` — `id`, `user_id` (FK), `scanned_url`, `scanned_at`, `tags` (relationship).
+- `ScanTag` — `id`, `user_id` (FK), `name` (unique per user), `color`.
+- `URLWhitelist` — `id`, `user_id` (FK), `url_pattern`.
+- `URLBlacklist` — `id`, `user_id` (FK), `url_pattern`, `reason`.
+- `ScheduledScan` — `id`, `user_id` (FK), `url`, `frequency` (daily/weekly/monthly).
+- `UserPreferences` — `id`, `user_id` (FK unique), `theme`, `timezone`, `email_notifications`, `scan_completion_notifications`, `daily_digest`.
+- `APIUsage` — `id`, `user_id` (FK), `endpoint`, `method`, `status_code`, `timestamp`.
 
 Users are provisioned on first Google login. Each user is limited to **5 scans
 per calendar day** (enforced server-side in `/api/scan`).
@@ -55,11 +61,51 @@ valid session cookie.
 | `GET`  | `/api/userinfo` | session | Return `{ username, email }` for the logged-in user. |
 | `POST` | `/api/delete` | session | Delete the logged-in user's account. |
 | `POST` | `/api/scan` | session | Submit a URL to VirusTotal (`{ "url": "..." }`), enforce the daily limit, persist the scan, return the analysis. |
-| `GET`  | `/api/scan/<url_id>` | session | Fetch a previously submitted VirusTotal analysis by id. |
+| `POST` | `/api/batch-scan` | session | Submit multiple URLs at once (`{ "urls": [...] }`), max 10 per batch. |
+| `GET`  | `/api/scans` | session | Get all scans for user. |
+| `GET`  | `/api/scans/<id>` | session | Fetch a specific scan with full result. |
+| `GET`  | `/api/scans/search` | session | Advanced search by URL, verdict, date range. |
+| `GET`  | `/api/scans/<id>/compare/<id2>` | session | Compare two scans side-by-side. |
+| `GET`  | `/api/scans/export/csv` | session | Export all scans as CSV file. |
+| `GET`  | `/api/scans/export/json` | session | Export all scans as JSON file. |
+| `POST` | `/api/scans/import` | session | Bulk import URLs from CSV/TXT file. |
+| `POST` | `/api/tags` | session | Create a new tag for organizing scans. |
+| `GET`  | `/api/tags` | session | List all tags for user. |
+| `POST` | `/api/scans/<id>/tags/<tag_id>` | session | Add tag to a scan. |
+| `POST` | `/api/whitelist` | session | Add URL pattern to whitelist. |
+| `GET`  | `/api/whitelist` | session | List whitelisted URLs. |
+| `DELETE` | `/api/whitelist/<id>` | session | Remove URL from whitelist. |
+| `POST` | `/api/blacklist` | session | Add URL pattern to blacklist with optional reason. |
+| `GET`  | `/api/blacklist` | session | List blacklisted URLs. |
+| `POST` | `/api/scheduled-scans` | session | Create a scheduled scan (daily/weekly/monthly). |
+| `GET`  | `/api/scheduled-scans` | session | List all scheduled scans. |
+| `PUT` | `/api/scheduled-scans/<id>` | session | Update scheduled scan (toggle active, change frequency). |
+| `DELETE` | `/api/scheduled-scans/<id>` | session | Delete a scheduled scan. |
+| `GET`  | `/api/preferences` | session | Get user preferences (theme, timezone, notifications). |
+| `PUT` | `/api/preferences` | session | Update user preferences. |
+| `GET`  | `/api/analytics` | session | Get analytics dashboard data (stats, verdicts, threats). |
+| `GET`  | `/api/api-usage` | session | Get user's API request history and usage stats. |
 | `GET`  | `/api/domain/<hostname>` | session | Return SecurityTrails subdomains for a hostname. |
 
 External calls (VirusTotal, SecurityTrails) run with request timeouts and
 non-2xx handling; callers receive JSON with an explicit HTTP status code.
+
+### Advanced Features (v2.0)
+
+Phishion now includes 12 advanced features to enhance threat intelligence workflows:
+
+1. **Batch URL Scanning** — Submit up to 10 URLs in a single request for efficient bulk scanning.
+2. **URL Tagging & Labeling** — Organize scans with custom tags and colors for quick categorization.
+3. **URL Whitelist/Blacklist** — Maintain personal whitelist and blacklist to skip or auto-flag URLs.
+4. **Automated Scan Scheduling** — Set up daily, weekly, or monthly recurring scans for critical URLs.
+5. **User Preferences & Settings** — Customize theme, timezone, and notification preferences.
+6. **Advanced Analytics Dashboard** — View detailed statistics including threat distribution and completion rates.
+7. **Advanced Search & Filtering** — Filter scans by date range, verdict, URL pattern, and threat level.
+8. **Scan Result Comparison** — Compare two scans side-by-side to identify differences in vendor verdicts.
+9. **Export Functionality** — Export scan history to CSV or JSON formats for reporting and analysis.
+10. **Bulk URL Import** — Import multiple URLs from CSV or TXT files to queue for scanning.
+11. **Email Notifications** — Get notified when scans complete (configurable in preferences).
+12. **API Usage Tracking** — Monitor API request history and usage statistics.
 
 ---
 
@@ -106,7 +152,9 @@ npm run build    # production build (required to pass before shipping)
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r backend/requirements.txt
-FLASK_APP=backend/app.py .venv/bin/flask run --port=4000
+export PYTHONPATH=backend
+.venv/bin/flask --app app:app db upgrade  # Apply database migrations
+.venv/bin/flask --app app:app run --port=4000
 ```
 
 ### Full stack
