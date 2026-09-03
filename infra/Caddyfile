@@ -1,0 +1,19 @@
+{$APP_HOST:localhost} {
+    encode zstd gzip
+
+    handle /api/* {
+        reverse_proxy backend:4000
+    }
+
+    handle /login/* {
+        reverse_proxy backend:4000
+    }
+
+    handle /callback/* {
+        reverse_proxy backend:4000
+    }
+
+    handle {
+        reverse_proxy frontend:3000
+    }
+}
