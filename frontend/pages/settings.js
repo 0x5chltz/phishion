@@ -1,11 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useAuth } from '@/context/AuthContext';
-import api from '@/lib/api';
+import React, { useEffect, useState } from 'react';
+import { makeStyles } from '@material-ui/core/styles';
+import Switch from '@material-ui/core/Switch';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
+import PageShell from '/components/PageShell/PageShell.js';
+import Card from '/components/Card/Card.js';
+import CardBody from '/components/Card/CardBody.js';
+import Button from '/components/CustomButtons/Button.js';
+import CustomInput from '/components/CustomInput/CustomInput.js';
+import LoadingBar from '/components/LoadingBar/LoadingBar.js';
+import { api } from '../lib/api';
+import { useNotify } from '../context/NotificationContext';
+import { useThemeMode } from '../context/ThemeContext';
+
+const useStyles = makeStyles(() => ({
+  row: { marginBottom: 20 },
+}));
 
 export default function Settings() {
-  const router = useRouter();
-  const { user } = useAuth();
+  const classes = useStyles();
+  const notify = useNotify();
+  const { setThemeMode } = useThemeMode();
   const [preferences, setPreferences] = useState({
     theme: 'light',
     timezone: 'UTC',
@@ -14,131 +28,97 @@ export default function Settings() {
     daily_digest: false,
   });
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    fetchPreferences();
-  }, [user, router]);
+    api.preferences()
+      .then((res) => setPreferences(res.preferences))
+      .catch(() => notify.error('Failed to load preferences'))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const fetchPreferences = async () => {
-    try {
-      const res = await api.get('/preferences');
-      setPreferences(res.data.preferences);
-    } catch (error) {
-      console.error('Failed to fetch preferences:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setPreferences(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+  const handleToggle = (key) => (e) => {
+    setPreferences((prev) => ({ ...prev, [key]: e.target.checked }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
-      await api.put('/preferences', preferences);
-      setMessage('Preferences saved successfully!');
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      setMessage('Failed to save preferences');
+      const res = await api.updatePreferences(preferences);
+      setPreferences(res.preferences);
+      setThemeMode(res.preferences.theme);
+      notify.success('Preferences saved');
+    } catch (err) {
+      notify.error(err.message || 'Failed to save preferences');
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!user) return null;
-
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Settings</h1>
+    <PageShell title="Settings" subtitle="Customize theme, timezone, and notification preferences.">
+      <Card>
+        <CardBody>
+          {loading ? (
+            <LoadingBar label="Loading preferences..." />
+          ) : (
+            <form onSubmit={handleSubmit} style={{ maxWidth: 480 }}>
+              <div className={classes.row}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={preferences.theme === 'dark'}
+                      onChange={(e) => setPreferences((prev) => ({ ...prev, theme: e.target.checked ? 'dark' : 'light' }))}
+                      color="primary"
+                    />
+                  }
+                  label="Dark theme"
+                />
+              </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
-        {message && (
-          <div className="mb-4 p-3 bg-green-100 text-green-700 rounded">
-            {message}
-          </div>
-        )}
+              <div className={classes.row}>
+                <CustomInput
+                  labelText="Timezone"
+                  id="timezone"
+                  formControlProps={{ fullWidth: true }}
+                  inputProps={{
+                    value: preferences.timezone,
+                    onChange: (e) => setPreferences((prev) => ({ ...prev, timezone: e.target.value })),
+                    placeholder: 'e.g. UTC, Asia/Jakarta',
+                  }}
+                />
+              </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Theme</label>
-          <select
-            name="theme"
-            value={preferences.theme}
-            onChange={handleChange}
-            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
+              <div className={classes.row}>
+                <FormControlLabel
+                  control={<Switch checked={preferences.email_notifications} onChange={handleToggle('email_notifications')} color="primary" />}
+                  label="Enable email notifications"
+                />
+              </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium mb-2">Timezone</label>
-          <input
-            type="text"
-            name="timezone"
-            value={preferences.timezone}
-            onChange={handleChange}
-            placeholder="e.g., UTC, America/New_York"
-            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+              <div className={classes.row}>
+                <FormControlLabel
+                  control={<Switch checked={preferences.scan_completion_notifications} onChange={handleToggle('scan_completion_notifications')} color="primary" />}
+                  label="Notify when scans complete"
+                />
+              </div>
 
-        <div className="mb-6">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="email_notifications"
-              checked={preferences.email_notifications}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            <span className="text-sm">Enable email notifications</span>
-          </label>
-        </div>
+              <div className={classes.row}>
+                <FormControlLabel
+                  control={<Switch checked={preferences.daily_digest} onChange={handleToggle('daily_digest')} color="primary" />}
+                  label="Send daily digest"
+                />
+              </div>
 
-        <div className="mb-6">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="scan_completion_notifications"
-              checked={preferences.scan_completion_notifications}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            <span className="text-sm">Notify when scans complete</span>
-          </label>
-        </div>
-
-        <div className="mb-6">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              name="daily_digest"
-              checked={preferences.daily_digest}
-              onChange={handleChange}
-              className="mr-2"
-            />
-            <span className="text-sm">Send daily digest</span>
-          </label>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full bg-blue-500 text-white p-3 rounded font-medium hover:bg-blue-600 transition"
-        >
-          Save Preferences
-        </button>
-      </form>
-    </div>
+              <Button color="primary" type="submit" disabled={saving}>
+                {saving ? 'Saving...' : 'Save Preferences'}
+              </Button>
+            </form>
+          )}
+        </CardBody>
+      </Card>
+    </PageShell>
   );
 }

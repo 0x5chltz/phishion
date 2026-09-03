@@ -1,145 +1,103 @@
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import { useAuth } from '@/context/AuthContext';
-import api from '@/lib/api';
+import React, { useEffect, useState } from 'react';
+import { makeStyles } from '@material-ui/core/styles';
+import PageShell from '/components/PageShell/PageShell.js';
+import Card from '/components/Card/Card.js';
+import CardBody from '/components/Card/CardBody.js';
+import GridContainer from '/components/Grid/GridContainer.js';
+import GridItem from '/components/Grid/GridItem.js';
+import Button from '/components/CustomButtons/Button.js';
+import LoadingBar from '/components/LoadingBar/LoadingBar.js';
+import DonutChart from '/components/DonutChart/DonutChart.js';
+import { api } from '../lib/api';
+import { useNotify } from '../context/NotificationContext';
+
+const useStyles = makeStyles(() => ({
+  statCard: { textAlign: 'center', padding: '24px 12px' },
+  statValue: { fontSize: 32, fontWeight: 700 },
+  statLabel: { color: '#888', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
+}));
 
 export default function Analytics() {
-  const router = useRouter();
-  const { user } = useAuth();
+  const classes = useStyles();
+  const notify = useNotify();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    fetchAnalytics();
-  }, [user, router]);
-
-  const fetchAnalytics = async () => {
-    try {
-      const res = await api.get('/analytics');
-      setAnalytics(res.data.analytics);
-    } catch (error) {
-      console.error('Failed to fetch analytics:', error);
-    } finally {
-      setLoading(false);
-    }
+  const load = () => {
+    setLoading(true);
+    api.analytics()
+      .then((res) => setAnalytics(res.analytics))
+      .catch((e) => notify.error(e.message || 'Failed to load analytics'))
+      .finally(() => setLoading(false));
   };
 
-  if (loading) return <div className="p-8">Loading analytics...</div>;
-  if (!user || !analytics) return null;
-
-  const completionRate = analytics.total_scans > 0
-    ? Math.round((analytics.completed_scans / analytics.total_scans) * 100)
-    : 0;
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Analytics Dashboard</h1>
+    <PageShell title="Analytics Dashboard" subtitle="Threat trends and scan statistics across your account.">
+      {loading || !analytics ? (
+        <LoadingBar label="Crunching analytics..." />
+      ) : (
+        <>
+          <GridContainer>
+            {[
+              { label: 'Total Scans', value: analytics.total_scans, color: '#3f51b5' },
+              { label: 'Completed', value: analytics.completed_scans, color: '#2e7d32' },
+              { label: 'Malicious URLs', value: analytics.malicious_count, color: '#c62828' },
+              { label: 'Suspicious URLs', value: analytics.suspicious_count, color: '#f9a825' },
+            ].map((stat) => (
+              <GridItem xs={12} sm={6} md={3} key={stat.label}>
+                <Card>
+                  <CardBody className={classes.statCard}>
+                    <div className={classes.statValue} style={{ color: stat.color }}>{stat.value}</div>
+                    <div className={classes.statLabel}>{stat.label}</div>
+                  </CardBody>
+                </Card>
+              </GridItem>
+            ))}
+          </GridContainer>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium mb-2">Total Scans</h3>
-          <p className="text-3xl font-bold text-blue-600">{analytics.total_scans}</p>
-        </div>
+          <GridContainer style={{ marginTop: 16 }}>
+            <GridItem xs={12} md={6}>
+              <Card>
+                <CardBody>
+                  <h4>Verdict Distribution</h4>
+                  <DonutChart
+                    segments={[
+                      { label: 'Malicious', value: analytics.verdicts.malicious || 0, color: '#c62828' },
+                      { label: 'Suspicious', value: analytics.verdicts.suspicious || 0, color: '#f9a825' },
+                      { label: 'Clean', value: analytics.verdicts.clean || 0, color: '#2e7d32' },
+                    ]}
+                  />
+                </CardBody>
+              </Card>
+            </GridItem>
+            <GridItem xs={12} md={6}>
+              <Card>
+                <CardBody>
+                  <h4>Quick Stats</h4>
+                  <p>
+                    Completion rate:{' '}
+                    <strong>
+                      {analytics.total_scans > 0 ? Math.round((analytics.completed_scans / analytics.total_scans) * 100) : 0}%
+                    </strong>
+                  </p>
+                  <p>
+                    Threat ratio:{' '}
+                    <strong>
+                      {analytics.total_scans > 0 ? Math.round((analytics.malicious_count / analytics.total_scans) * 100) : 0}%
+                    </strong>
+                  </p>
+                </CardBody>
+              </Card>
+            </GridItem>
+          </GridContainer>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium mb-2">Completed Scans</h3>
-          <p className="text-3xl font-bold text-green-600">{analytics.completed_scans}</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium mb-2">Malicious URLs</h3>
-          <p className="text-3xl font-bold text-red-600">{analytics.malicious_count}</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-gray-600 text-sm font-medium mb-2">Suspicious URLs</h3>
-          <p className="text-3xl font-bold text-yellow-600">{analytics.suspicious_count}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4">Verdict Distribution</h2>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-1">
-                <span>Malicious</span>
-                <span className="font-semibold">{analytics.verdicts.malicious || 0}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded h-2">
-                <div
-                  className="bg-red-500 h-2 rounded"
-                  style={{width: `${analytics.total_scans > 0 ? (analytics.verdicts.malicious / analytics.total_scans * 100) : 0}%`}}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between mb-1">
-                <span>Suspicious</span>
-                <span className="font-semibold">{analytics.verdicts.suspicious || 0}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded h-2">
-                <div
-                  className="bg-yellow-500 h-2 rounded"
-                  style={{width: `${analytics.total_scans > 0 ? (analytics.verdicts.suspicious / analytics.total_scans * 100) : 0}%`}}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between mb-1">
-                <span>Clean</span>
-                <span className="font-semibold">{analytics.verdicts.clean || 0}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded h-2">
-                <div
-                  className="bg-green-500 h-2 rounded"
-                  style={{width: `${analytics.total_scans > 0 ? (analytics.verdicts.clean / analytics.total_scans * 100) : 0}%`}}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-4">Quick Stats</h2>
-          <dl className="space-y-4">
-            <div className="flex justify-between">
-              <dt className="text-gray-600">Completion Rate</dt>
-              <dd className="font-semibold">{completionRate}%</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-600">Threat Ratio</dt>
-              <dd className="font-semibold">
-                {analytics.total_scans > 0
-                  ? `${Math.round((analytics.malicious_count / analytics.total_scans) * 100)}%`
-                  : '0%'
-                }
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-600">Avg Vendors (Last Scan)</dt>
-              <dd className="font-semibold">-</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-gray-600">Most Active Day</dt>
-              <dd className="font-semibold">-</dd>
-            </div>
-          </dl>
-        </div>
-      </div>
-
-      <button
-        onClick={fetchAnalytics}
-        className="mt-8 px-4 py-2 bg-blue-500 text-white rounded font-medium hover:bg-blue-600 transition"
-      >
-        Refresh Analytics
-      </button>
-    </div>
+          <Button color="primary" onClick={load} style={{ marginTop: 24 }}>
+            Refresh Analytics
+          </Button>
+        </>
+      )}
+    </PageShell>
   );
 }

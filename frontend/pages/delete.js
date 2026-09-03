@@ -1,43 +1,52 @@
-import React, { useEffect } from "react";
+import React, { useState } from 'react';
 import Router from 'next/router';
-// nodejs library that concatenates classes
-import classNames from "classnames";
-// react components for routing our app without refresh
-import Link from "next/link";
-// @material-ui/core components
-import { makeStyles } from "@material-ui/core/styles";
-// @material-ui/icons
-// core components
-import Parallax from "/components/Parallax/ParallaxInspect.js";
+import { makeStyles } from '@material-ui/core/styles';
+import PageShell from '/components/PageShell/PageShell.js';
+import Card from '/components/Card/Card.js';
+import CardBody from '/components/Card/CardBody.js';
+import Button from '/components/CustomButtons/Button.js';
+import { api } from '../lib/api';
+import { useNotify } from '../context/NotificationContext';
 
-export default function Logout() {
+const useStyles = makeStyles(() => ({
+  card: { maxWidth: 480, margin: '0 auto', textAlign: 'center' },
+}));
 
-	const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-	const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
+export default function DeleteAccount() {
+  const classes = useStyles();
+  const notify = useNotify();
+  const [deleting, setDeleting] = useState(false);
 
-useEffect(() => {
-	const handleDeleteAccount = async (e) => {
-	  try {
-		const res = await fetch(`${apiUrl}/api/delete`, {
-		  method: 'POST',
-		  credentials: 'include'
-		});
-	  } catch (error) {
-		console.error("Error:", error);
-	  } finally {
-		Router.push("/app");
-	  }
-	};
-
-	handleDeleteAccount();
-	}, []);
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.deleteAccount();
+      notify.success('Account deleted');
+      Router.push('/app');
+    } catch (err) {
+      notify.error(err.message || 'Failed to delete account');
+      setDeleting(false);
+    }
+  };
 
   return (
-    <div>
-      <Parallax image="/img/background_inspect2.png">
-				Deleting account...
-        </Parallax>
-    </div>
-    );
+    <PageShell title="Delete Account">
+      <Card className={classes.card}>
+        <CardBody>
+          <p>
+            This will permanently delete your account and every scan associated with it.
+            This action cannot be undone.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
+            <Button color="transparent" onClick={() => Router.push('/profile')} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button color="danger" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Yes, delete my account'}
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
+    </PageShell>
+  );
 }
-

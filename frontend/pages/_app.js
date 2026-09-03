@@ -19,6 +19,10 @@ import React from "react";
 import App from "next/app";
 import Head from "next/head";
 import "/styles/scss/nextjs-material-kit.scss?v=1.2.0";
+import { AuthProvider } from "/context/AuthContext.js";
+import { NotificationProvider } from "/context/NotificationContext.js";
+import { ConfirmProvider } from "/components/ConfirmDialog/ConfirmDialog.js";
+import { ThemeModeProvider } from "/context/ThemeContext.js";
 
 export default class MyApp extends App {
   componentDidMount() {
@@ -62,7 +66,15 @@ export default class MyApp extends App {
           />
           <title>Phishion</title>
         </Head>
-        <Component {...pageProps} />
+        <ThemeModeProvider>
+          <NotificationProvider>
+            <ConfirmProvider>
+              <AuthProvider>
+                <Component {...pageProps} />
+              </AuthProvider>
+            </ConfirmProvider>
+          </NotificationProvider>
+        </ThemeModeProvider>
       </React.Fragment>
     );
   }

@@ -107,6 +107,50 @@ Phishion now includes 12 advanced features to enhance threat intelligence workfl
 11. **Email Notifications** — Get notified when scans complete (configurable in preferences).
 12. **API Usage Tracking** — Monitor API request history and usage statistics.
 
+### UI/UX Overhaul (v2.1)
+
+The five feature pages shipped in v2.0 originally used Tailwind CSS classes and a
+non-installed `@mui/material` v5 import path — neither works in this project,
+which only ships `@material-ui/core` v4. All pages were rewritten to the
+project's actual Material-UI v4 / Creative Tim component system, and 12 new
+UI/UX improvements were added on top:
+
+1. **Unified Tools navigation** — a "Tools" dropdown in the header links every
+   feature page (History, Batch Scan, Bulk Import, Compare, Search, Analytics,
+   Scheduled Scans, Manage, Settings) so they're actually reachable.
+2. **Global toast notifications** — `context/NotificationContext.js` replaces
+   scattered inline `message` state with a consistent `useNotify()` API.
+3. **Confirmation dialogs** — `components/ConfirmDialog/ConfirmDialog.js` guards
+   destructive actions (delete whitelist entry, delete scheduled scan).
+4. **Fixed unguarded account deletion** — `pages/delete.js` previously deleted
+   the account immediately on page load with no confirmation; it now requires
+   an explicit click.
+5. **Dark mode toggle** — `context/ThemeContext.js` drives a real MUI palette
+   switch, persisted to `localStorage` and synced with `/api/preferences`.
+6. **SVG donut chart** — verdict distribution on the Analytics page is now a
+   real chart instead of plain divs, with no new dependency.
+7. **Batch Scan UI** (`pages/batch.js`) — frontend for the batch-scan API.
+8. **Compare UI** (`pages/compare.js`) — frontend for the scan comparison API.
+9. **Bulk Import UI** (`pages/import.js`) — drag-and-drop CSV/TXT upload.
+10. **Pagination** — `lib/usePagination.js` + the existing `Pagination`
+    component are now wired into History and Search results.
+11. **Tag chips & quick actions** — History rows show tag chips and inline
+    whitelist/blacklist buttons.
+12. **Loading and empty states** — `components/LoadingBar` and
+    `components/EmptyState` replace bare "Loading..." text across every
+    data-fetching page.
+
+Also fixed: `node_modules` was out of sync with `package.json` (missing
+`@material-ui/*` entirely); `frontend/package.json` was missing a `lint`
+script and the `eslint` / `eslint-config-next` devDependencies its own
+`.eslintrc.json` requires. Both are now in place and `npm run build` passes
+cleanly with linting enabled.
+
+> **Known gap:** `jest` and `@playwright/test` are referenced by
+> `jest.config.js`, `playwright.config.js`, and the existing test files but are
+> not yet in `package.json`. `npm test` and `npm run test:e2e` will not run
+> until those are added — tracked as follow-up work, not fixed in this round.
+
 ---
 
 ## Runtime contracts
