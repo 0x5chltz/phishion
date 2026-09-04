@@ -20,17 +20,20 @@ import { useNotify } from "../context/NotificationContext";
 
 import styles from "/styles/jss/nextjs-material-kit/pages/loginPage.js";
 
+// Mirrors MIN_PASSWORD_LENGTH in backend/phishion/validators.py. The server
+// is the authority; this only avoids a pointless round trip.
+const MIN_PASSWORD_LENGTH = 10;
+
 const useStyles = makeStyles(styles);
 
-const LoginPage = (props) => {
+const RegisterPage = (props) => {
   const classes = useStyles();
   const notify = useNotify();
   const { refresh } = useAuth();
   const { ...rest } = props;
 
   const [cardAnimaton, setCardAnimation] = React.useState("cardHidden");
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
+  const [form, setForm] = React.useState({ email: "", username: "", password: "" });
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -39,26 +42,27 @@ const LoginPage = (props) => {
     return () => clearTimeout(timer);
   }, []);
 
+  const update = (field) => (event) =>
+    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (submitting) return;
     setError("");
 
-    if (!email.trim() || !password) {
-      setError("Enter your email and password.");
+    if (form.password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
       return;
     }
 
     setSubmitting(true);
     try {
-      await api.login(email.trim(), password);
+      await api.register(form.email.trim(), form.username.trim(), form.password);
       await refresh();
-      notify.success("Signed in");
+      notify.success("Account created");
       Router.push("/app");
     } catch (err) {
-      // The backend deliberately returns the same message for an unknown
-      // address and a wrong password, so just surface it.
-      setError(err.message || "Could not sign in.");
+      setError(err.message || "Could not create the account.");
       setSubmitting(false);
     }
   };
@@ -66,9 +70,9 @@ const LoginPage = (props) => {
   return (
     <div>
       <Seo
-        title="Sign in"
-        description="Sign in to Phishion to submit URLs for analysis and keep a searchable history of your scans."
-        path="/login"
+        title="Create an account"
+        description="Create a Phishion account to submit URLs for analysis and keep a searchable history of your scans."
+        path="/register"
       />
       <Header
         absolute
@@ -90,10 +94,10 @@ const LoginPage = (props) => {
             <GridItem xs={12} sm={8} md={5}>
               <Card className={classes[cardAnimaton]}>
                 <CardBody>
-                  <h1 className={classes.cardTitle}>Sign in</h1>
+                  <h1 className={classes.cardTitle}>Create an account</h1>
                   <p className={classes.cardCopy}>
-                    Scans, tags, and lists are tied to your account, and the
-                    daily scan quota is counted per user.
+                    You need an account to submit scans. Each account has its
+                    own history, tags, and daily scan quota.
                   </p>
 
                   <form onSubmit={handleSubmit} noValidate>
@@ -110,25 +114,39 @@ const LoginPage = (props) => {
                       inputProps={{
                         type: "email",
                         name: "email",
-                        value: email,
+                        value: form.email,
                         autoComplete: "email",
                         required: true,
                         disabled: submitting,
-                        onChange: (e) => setEmail(e.target.value)
+                        onChange: update("email")
                       }}
                     />
                     <CustomInput
-                      labelText="Password"
+                      labelText="Username"
+                      id="username"
+                      formControlProps={{ fullWidth: true }}
+                      inputProps={{
+                        type: "text",
+                        name: "username",
+                        value: form.username,
+                        autoComplete: "username",
+                        required: true,
+                        disabled: submitting,
+                        onChange: update("username")
+                      }}
+                    />
+                    <CustomInput
+                      labelText={`Password (at least ${MIN_PASSWORD_LENGTH} characters)`}
                       id="pass"
                       formControlProps={{ fullWidth: true }}
                       inputProps={{
                         type: "password",
                         name: "password",
-                        value: password,
-                        autoComplete: "current-password",
+                        value: form.password,
+                        autoComplete: "new-password",
                         required: true,
                         disabled: submitting,
-                        onChange: (e) => setPassword(e.target.value)
+                        onChange: update("password")
                       }}
                     />
 
@@ -140,14 +158,14 @@ const LoginPage = (props) => {
                       disabled={submitting}
                       className={classes.submit}
                     >
-                      {submitting ? "Signing in..." : "Sign in"}
+                      {submitting ? "Creating account..." : "Create account"}
                     </Button>
                   </form>
 
                   <p className={classes.altAction}>
-                    No account yet?{" "}
-                    <Link href="/register">
-                      <a className={classes.altLink}>Create one</a>
+                    Already have an account?{" "}
+                    <Link href="/login">
+                      <a className={classes.altLink}>Sign in</a>
                     </Link>
                   </p>
                 </CardBody>
@@ -161,4 +179,4 @@ const LoginPage = (props) => {
   );
 };
 
-export default LoginPage;
+export default RegisterPage;

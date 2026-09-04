@@ -5,6 +5,46 @@ from urllib.parse import urlsplit
 _HOSTNAME_LABEL = re.compile(r"^(?!-)[A-Za-z0-9-]{1,63}(?<!-)$")
 _MAX_URL_LENGTH = 2048
 
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+$")
+_USERNAME = re.compile(r"^[A-Za-z0-9._-]{3,80}$")
+
+MIN_PASSWORD_LENGTH = 10
+# Werkzeug hashes the full input, but an unbounded password is still a cheap
+# way to make the KDF burn CPU, so cap it.
+MAX_PASSWORD_LENGTH = 128
+
+
+def normalize_email(value):
+    if not isinstance(value, str):
+        return ""
+    return value.strip().lower()
+
+
+def is_valid_email(value):
+    value = normalize_email(value)
+    if not value or len(value) > 120 or not _EMAIL.fullmatch(value):
+        return False
+    return is_valid_hostname(value.split("@", 1)[1])
+
+
+def is_valid_username(value):
+    if not isinstance(value, str):
+        return False
+    return bool(_USERNAME.fullmatch(value.strip()))
+
+
+def password_problem(value):
+    """Return a human-readable reason the password is unacceptable, or None."""
+    if not isinstance(value, str) or not value:
+        return "Password is required"
+    if len(value) < MIN_PASSWORD_LENGTH:
+        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
+    if len(value) > MAX_PASSWORD_LENGTH:
+        return f"Password must be at most {MAX_PASSWORD_LENGTH} characters"
+    if value.strip() != value:
+        return "Password cannot start or end with whitespace"
+    return None
+
 
 def normalize_hostname(hostname):
     if not isinstance(hostname, str):

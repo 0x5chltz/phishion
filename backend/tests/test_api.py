@@ -4,8 +4,6 @@ from unittest.mock import patch
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret")
-os.environ.setdefault("GOOGLE_CLIENT_ID", "test-client")
-os.environ.setdefault("GOOGLE_CLIENT_SECRET", "test-secret")
 os.environ.setdefault("VIRUSTOTAL_API_KEY", "test-vt")
 os.environ.setdefault("SECURITYTRAILS_API_KEY", "test-st")
 
@@ -205,6 +203,93 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 429)
         submit_url.assert_not_called()
+
+    def register(self, **overrides):
+        payload = {
+            "email": "nadia@example.com",
+            "username": "nadia",
+            "password": "correct-horse-battery",
+        }
+        payload.update(overrides)
+        return self.client.post(
+            "/api/register", json=payload, headers={"X-CSRF-Token": self.csrf()}
+        )
+
+    def test_register_creates_user_and_starts_session(self):
+        response = self.register()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["user"]["email"], "nadia@example.com")
+        # The session is live straight after registering.
+        self.assertEqual(self.client.get("/api/userinfo").status_code, 200)
+
+    def test_register_stores_a_hash_not_the_password(self):
+        self.register()
+        with self.app.app_context():
+            user = User.query.filter_by(email="nadia@example.com").first()
+            self.assertIsNotNone(user.password_hash)
+            self.assertNotIn("correct-horse-battery", user.password_hash)
+            self.assertTrue(user.check_password("correct-horse-battery"))
+            self.assertFalse(user.check_password("wrong"))
+
+    def test_register_rejects_short_password_and_bad_email(self):
+        self.assertEqual(self.register(password="short").status_code, 400)
+        self.assertEqual(self.register(email="not-an-email").status_code, 400)
+
+    def test_register_rejects_duplicate_email(self):
+        self.assertEqual(self.register().status_code, 201)
+        again = self.register(username="different")
+        self.assertEqual(again.status_code, 409)
+
+    def test_login_succeeds_then_rejects_a_wrong_password_generically(self):
+        self.register()
+        self.client.post("/api/logout", headers={"X-CSRF-Token": self.csrf()})
+
+        good = self.client.post(
+            "/api/login",
+            json={"email": "nadia@example.com", "password": "correct-horse-battery"},
+            headers={"X-CSRF-Token": self.csrf()},
+        )
+        self.assertEqual(good.status_code, 200)
+
+        bad = self.client.post(
+            "/api/login",
+            json={"email": "nadia@example.com", "password": "not-it"},
+            headers={"X-CSRF-Token": self.csrf()},
+        )
+        self.assertEqual(bad.status_code, 401)
+        # Same wording as an unknown address, so the form cannot be used to
+        # enumerate accounts.
+        unknown = self.client.post(
+            "/api/login",
+            json={"email": "nobody@example.com", "password": "not-it"},
+            headers={"X-CSRF-Token": self.csrf()},
+        )
+        self.assertEqual(unknown.status_code, 401)
+        self.assertEqual(bad.get_json()["error"], unknown.get_json()["error"])
+
+    def test_login_locks_out_after_repeated_failures(self):
+        self.register()
+        token = self.csrf()
+        for _ in range(5):
+            self.client.post(
+                "/api/login",
+                json={"email": "nadia@example.com", "password": "wrong"},
+                headers={"X-CSRF-Token": token},
+            )
+        blocked = self.client.post(
+            "/api/login",
+            json={"email": "nadia@example.com", "password": "correct-horse-battery"},
+            headers={"X-CSRF-Token": token},
+        )
+        self.assertEqual(blocked.status_code, 429)
+
+    def test_login_requires_csrf(self):
+        self.register()
+        response = self.client.post(
+            "/api/login",
+            json={"email": "nadia@example.com", "password": "correct-horse-battery"},
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_history_only_returns_current_users_scans(self):
         with self.app.app_context():

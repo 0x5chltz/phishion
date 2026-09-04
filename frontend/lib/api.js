@@ -56,6 +56,9 @@ export async function apiFetch(path, options = {}) {
 
 export const api = {
   userinfo: () => apiFetch('/userinfo'),
+  login: (email, password) => apiFetch('/login', { method: 'POST', body: { email, password } }),
+  register: (email, username, password) =>
+    apiFetch('/register', { method: 'POST', body: { email, username, password } }),
   scans: () => apiFetch('/scans'),
   scan: (url) => apiFetch('/scan', { method: 'POST', body: { url } }),
   scanDetail: (id) => apiFetch(`/scans/${encodeURIComponent(id)}`),
@@ -127,7 +130,3 @@ export async function importScans(file) {
   return data;
 }
 
-export function googleLoginUrl() {
-  const base = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
-  return `${base.replace(/\/$/, '')}/login/google`;
-}

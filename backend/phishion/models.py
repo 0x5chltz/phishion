@@ -1,5 +1,7 @@
 from datetime import UTC, datetime
 
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from .extensions import db
 
 
@@ -13,9 +15,27 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    # Nullable so rows created by the previous Google OAuth flow, which never
+    # had a password, keep loading. Those accounts cannot sign in until they
+    # set one; see set_password.
+    password_hash = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=utcnow, nullable=False)
+    # Brute-force state lives on the row rather than in the process cache.
+    # Gunicorn runs multiple workers and REDIS_URL is optional, so an
+    # in-memory counter is per-worker and therefore not a control at all.
+    failed_login_count = db.Column(db.Integer, nullable=False, default=0)
+    last_failed_login_at = db.Column(db.DateTime)
     scans = db.relationship(
         "Scan", back_populates="user", cascade="all, delete-orphan"
     )
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
 
     def to_dict(self):
         return {"id": self.id, "username": self.username, "email": self.email}

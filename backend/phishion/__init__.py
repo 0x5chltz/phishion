@@ -6,7 +6,7 @@ from flask import Flask, g, jsonify, request
 from flask_cors import CORS
 
 from .config import CONFIGS, Config
-from .extensions import db, migrate, oauth
+from .extensions import db, migrate
 
 
 def _configure_logging(app):
@@ -36,14 +36,6 @@ def create_app(config_name=None):
 
     db.init_app(app)
     migrate.init_app(app, db)
-    oauth.init_app(app)
-    oauth.register(
-        name="google",
-        client_id=app.config.get("GOOGLE_CLIENT_ID"),
-        client_secret=app.config.get("GOOGLE_CLIENT_SECRET"),
-        server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-        client_kwargs={"scope": "openid email profile"},
-    )
     CORS(
         app,
         origins=app.config["CORS_ORIGINS"],

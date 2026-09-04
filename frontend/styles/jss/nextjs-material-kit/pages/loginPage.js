@@ -53,6 +53,35 @@ const loginPageStyle = (theme) => ({
     width: "20px",
     height: "20px",
     marginRight: "8px"
+  },
+  submit: {
+    marginTop: "24px"
+  },
+  formError: {
+    background: theme.palette.type === "dark"
+      ? "rgba(239, 68, 68, 0.16)"
+      : "rgba(220, 38, 38, 0.10)",
+    border: `1px solid ${theme.palette.error.main}55`,
+    color: theme.palette.type === "dark"
+      ? theme.palette.error.main
+      : theme.palette.error.dark,
+    borderRadius: 8,
+    padding: "10px 14px",
+    fontSize: "0.875rem",
+    lineHeight: 1.5,
+    margin: "0 0 8px"
+  },
+  altAction: {
+    color: theme.palette.text.secondary,
+    fontSize: "0.875rem",
+    textAlign: "center",
+    margin: "20px 0 0"
+  },
+  altLink: {
+    color: theme.palette.primary.main,
+    fontWeight: 600,
+    textDecoration: "underline",
+    textUnderlineOffset: "3px"
   }
 });
 
