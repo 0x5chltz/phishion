@@ -2,3 +2,5 @@
 !.env.example
 frontend/package.json
 compose.yml
+*.db
+.venv/
