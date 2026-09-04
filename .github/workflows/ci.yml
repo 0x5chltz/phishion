@@ -36,37 +36,29 @@ jobs:
       - working-directory: frontend
         run: npm ci
       - working-directory: frontend
-        run: npm test -- --runInBand
+        run: npm run lint
+      # `npm test` is still the "no test specified && exit 1" placeholder, and
+      # jest is not in package.json, so a test step here would fail every run.
+      # The production build is the real gate until a runner is added.
       - working-directory: frontend
         run: npm run build
 
   containers:
     runs-on: ubuntu-latest
+    # Compose derives DATABASE_URL from the POSTGRES_* values, so only those
+    # plus the app secrets are needed to validate and build.
+    env:
+      POSTGRES_USER: phishion
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: phishion
+      SECRET_KEY: test-secret
+      VIRUSTOTAL_API_KEY: test-key
+      SECURITYTRAILS_API_KEY: test-key
     steps:
       - uses: actions/checkout@v4
       - name: Validate Compose
-        env:
-          DATABASE_URL: postgresql://phishion:test@db:5432/phishion
-          SECRET_KEY: test-secret
-          GOOGLE_CLIENT_ID: test-client
-          GOOGLE_CLIENT_SECRET: test-secret
-          VIRUSTOTAL_API_KEY: test-key
-          SECURITYTRAILS_API_KEY: test-key
-          POSTGRES_USER: phishion
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: phishion
         run: docker compose config --quiet
       - name: Build images
-        env:
-          DATABASE_URL: postgresql://phishion:test@db:5432/phishion
-          SECRET_KEY: test-secret
-          GOOGLE_CLIENT_ID: test-client
-          GOOGLE_CLIENT_SECRET: test-secret
-          VIRUSTOTAL_API_KEY: test-key
-          SECURITYTRAILS_API_KEY: test-key
-          POSTGRES_USER: phishion
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: phishion
         run: docker compose build
 
   security:

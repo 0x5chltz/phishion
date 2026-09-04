@@ -33,7 +33,10 @@ services:
     ports:
       - "${BACKEND_PORT:-4000}:4000"
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      # Built from the POSTGRES_* values rather than read from DATABASE_URL, so
+      # the host cannot drift from the db service name. A DATABASE_URL in .env
+      # is for running the backend natively, where "db" would not resolve.
+      DATABASE_URL: postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:?POSTGRES_DB is required}
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY:?VIRUSTOTAL_API_KEY is required}
       SECURITYTRAILS_API_KEY: ${SECURITYTRAILS_API_KEY:?SECURITYTRAILS_API_KEY is required}

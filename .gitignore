@@ -1,6 +1,23 @@
 .env*
 !.env.example
-frontend/package.json
-compose.yml
+
+# frontend/package.json and compose.yml were listed here while also being
+# tracked by git. Ignoring a tracked file does not untrack it, but it does mean
+# a re-add after a delete is silently skipped, so the entries were removed.
+
+# Local SQLite databases used for native development.
 *.db
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ropeproject/
 .venv/
+
+# Node / Next
+node_modules/
+.next/
+out/
+
+.DS_Store

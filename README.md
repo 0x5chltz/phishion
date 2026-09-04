@@ -21,7 +21,8 @@ Browser (localhost:3000)  ->  Flask API (localhost:4000/api/*)  ->  PostgreSQL
 
 | Path | Responsibility |
 |------|----------------|
-| `backend/app.py` | Flask API, Google OAuth login, SQLAlchemy models (`User`, `Scan`), VirusTotal and SecurityTrails integrations. |
+| `backend/app.py` | WSGI entry point; delegates to the `phishion` application factory. |
+| `backend/phishion/` | Application factory, models, routes, email/password auth, security helpers, and services. |
 | `frontend/pages/` | Next.js 12 Pages Router entry points (`index`, `login`, `inspect`, `result`, `profile`, `logout`, `delete`). |
 | `frontend/pages-sections/` | Feature UI + the client-side `fetch` calls to the API. |
 | `frontend/components/`, `frontend/styles/` | Material UI 4 / Creative Tim component system. |
@@ -33,7 +34,8 @@ Authentication uses a Flask session cookie. Any browser request that needs auth
 
 ### Data model
 
-- `User` — `id`, `username` (unique), `email` (unique), `scans` (relationship).
+- `User` - `id`, `username` (unique), `email` (unique), `password_hash` (scrypt),
+  `created_at`, `failed_login_count`, `last_failed_login_at`, `scans` (relationship).
 - `Scan` — `id`, `user_id` (FK), `scanned_url`, `scanned_at`, `tags` (relationship).
 - `ScanTag` — `id`, `user_id` (FK), `name` (unique per user), `color`.
 - `URLWhitelist` — `id`, `user_id` (FK), `url_pattern`.
@@ -42,8 +44,20 @@ Authentication uses a Flask session cookie. Any browser request that needs auth
 - `UserPreferences` — `id`, `user_id` (FK unique), `theme`, `timezone`, `email_notifications`, `scan_completion_notifications`, `daily_digest`.
 - `APIUsage` — `id`, `user_id` (FK), `endpoint`, `method`, `status_code`, `timestamp`.
 
-Users are provisioned on first Google login. Each user is limited to **5 scans
-per calendar day** (enforced server-side in `/api/scan`).
+Accounts are created through `/api/register` with an email, username and
+password. Passwords are hashed with scrypt via Werkzeug; the plaintext is never
+stored. `password_hash` is nullable so rows created by the previous Google OAuth
+flow still load, but those accounts cannot sign in until a password is set.
+
+Sign-in returns an identical error for an unknown address and a wrong password,
+so the form cannot be used to enumerate accounts. After 5 failed attempts an
+account is locked for 15 minutes. That counter lives on the user row rather than
+in the process cache, because Gunicorn runs multiple workers and `REDIS_URL` is
+optional, which would make an in-memory counter per-worker and therefore not a
+control at all.
+
+Each user is limited to **5 scans per calendar day**, enforced server-side in
+`/api/scan`, `/api/batch-scan` and `/api/scans/import`.
 
 ---
 
@@ -55,8 +69,9 @@ valid session cookie.
 | Method | Route | Auth | Description |
 |--------|-------|------|-------------|
 | `GET`  | `/api` | no | Health / welcome message. |
-| `GET`  | `/login/google` | no | Start Google OAuth flow. |
-| `GET`  | `/callback/google` | no | OAuth callback; provisions user, sets session, redirects to the dashboard. |
+| `GET`  | `/api/csrf` | no | Session-bound CSRF token. Required by every mutating request. |
+| `POST` | `/api/register` | no + CSRF | Create an account (`{ email, username, password }`) and start a session. |
+| `POST` | `/api/login` | no + CSRF | Sign in (`{ email, password }`). Returns the same error for an unknown address and a wrong password. |
 | `POST` | `/api/logout` | session | Clear the session. |
 | `GET`  | `/api/userinfo` | session | Return `{ username, email }` for the logged-in user. |
 | `POST` | `/api/delete` | session | Delete the logged-in user's account. |
@@ -157,11 +172,19 @@ cleanly with linting enabled.
 
 ### Backend environment variables (required)
 
-- `DATABASE_URL`
+Copy `.env.example` to `.env` and fill it in. Compose reads `.env` from the
+repository root automatically.
+
 - `SECRET_KEY`
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - `VIRUSTOTAL_API_KEY`
 - `SECURITYTRAILS_API_KEY`
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+
+`DATABASE_URL` is **not** needed for Compose: the backend service builds it
+from the `POSTGRES_*` values and points it at the `db` service, so the host can
+never drift from the service name. Set `DATABASE_URL` only when running Flask
+natively on the host, where `db` does not resolve. The `db` service is not
+published to the host, so native runs should use SQLite.
 
 ### PostgreSQL environment variables (required by Compose)
 
@@ -175,7 +198,7 @@ cleanly with linting enabled.
 - `NEXT_PUBLIC_BACKEND_NAME` (default `api`)
 - `FRONTEND_PORT` (optional Compose host port; default `3000`)
 
-> Never hardcode credentials, database passwords, API keys, or OAuth secrets.
+> Never hardcode credentials, database passwords, or API keys.
 > `.env*` files are git-ignored and must not be read or committed.
 
 ---
@@ -183,6 +206,11 @@ cleanly with linting enabled.
 ## Development
 
 ### Frontend
+
+> Run the frontend through the npm scripts. Do **not** invoke `npx next ...`:
+> npx may resolve a different, newer Next.js from its cache instead of the
+> pinned 12.2.5 in `node_modules`, which produces build output the local server
+> cannot load (`Cannot find module .next/server/pages/<route>.js`).
 
 ```bash
 cd frontend
