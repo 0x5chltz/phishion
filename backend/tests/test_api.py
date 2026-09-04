@@ -69,6 +69,21 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(body["error"], "Not found")
         self.assertTrue(body["request_id"])
 
+    def test_cors_allows_both_loopback_names(self):
+        # A browser treats localhost and 127.0.0.1 as different origins. The
+        # app was only allowing one, so opening it on the other name failed
+        # every request with a missing Access-Control-Allow-Origin. curl does
+        # not send Origin, which is why this went unnoticed.
+        for origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
+            with self.subTest(origin=origin):
+                response = self.client.get("/api/health", headers={"Origin": origin})
+                self.assertEqual(
+                    response.headers.get("Access-Control-Allow-Origin"), origin
+                )
+                self.assertEqual(
+                    response.headers.get("Access-Control-Allow-Credentials"), "true"
+                )
+
     def test_cors_rejects_untrusted_origin(self):
         response = self.client.get(
             "/api/health", headers={"Origin": "https://attacker.example"}

@@ -17,6 +17,7 @@ import CardFooter from "/components/Card/CardFooter.js";
 import CustomInput from "/components/CustomInput/CustomInput.js";
 
 import styles from "/styles/jss/nextjs-material-kit/pages/inspectPage.js";
+import { api } from "../../lib/api";
 
 const useStyles = makeStyles(styles);
 
@@ -28,9 +29,6 @@ export default function DomainSection() {
   const [error, setError] = useState("");
   const [searchedDomain, setSearchedDomain] = useState("");
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-  const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || "api";
-
   const handleLookup = async (event) => {
     event.preventDefault();
     const normalizedHostname = hostname.trim().toLowerCase().replace(/\.$/, "");
@@ -41,15 +39,9 @@ export default function DomainSection() {
     setSubdomains([]);
 
     try {
-      const response = await fetch(
-        `${apiUrl}/${backendname}/domain/${encodeURIComponent(normalizedHostname)}`,
-        { credentials: "include" }
-      );
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Subdomain discovery failed");
-      }
+      // Via lib/api.js so the API origin follows the page hostname and a
+      // non-2xx response throws with .status attached.
+      const data = await api.domain(normalizedHostname);
 
       const discovered = Array.isArray(data.subdomains) ? data.subdomains : [];
       setSubdomains(discovered.sort((left, right) => left.localeCompare(right)));

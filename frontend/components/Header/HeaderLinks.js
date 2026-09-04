@@ -17,6 +17,7 @@ import Brightness7 from "@material-ui/icons/Brightness7";
 import Button from "/components/CustomButtons/Button.js";
 import CustomDropdown from "/components/CustomDropdown/CustomDropdown.js";
 import { useThemeMode } from "/context/ThemeContext.js";
+import { api } from "/lib/api.js";
 
 const TOOL_ROUTES = {
   "Scan History": "/history",
@@ -39,31 +40,34 @@ export default function HeaderLinks(props) {
   const router = useRouter();
   const [ url, setUrl ] = useState("");
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
-
   const [username, setUsername] = useState(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`${apiUrl}/${backendname}/userinfo`, {
-          credentials: "include",
-        });
-
-        if (!res.ok) throw new Error("Not authenticated");
-        
-		const data = await res.json();
-		localStorage.setItem("Username", data.username);
+    let cancelled = false;
+    // Goes through lib/api.js so the API origin follows the page hostname.
+    // A hardcoded localhost here broke every call when the app was opened on
+    // 127.0.0.1, and a 401 is the normal anonymous case, not an error worth
+    // logging on every page load.
+    api
+      .userinfo()
+      .then((data) => {
+        if (cancelled) return;
+        try {
+          localStorage.setItem("Username", data.username);
+        } catch (_) {
+          // Storage unavailable in private mode; not required.
+        }
         setUsername(data.username || "Guest");
-        } catch (err) {
-        console.error("Failed to fetch user:", err);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err.status !== 401) console.error("Failed to fetch user:", err);
         setUsername("Guest");
-		}
-	  };
-    
-	fetchUser();
-}, []);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const isAuthenticated = username && username !== "Guest";
   const notAuthenticated = username && username === "Guest";

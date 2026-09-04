@@ -1,10 +1,39 @@
 const DEFAULT_API_URL = 'http://localhost:4000';
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+/**
+ * Keep the API on the same hostname the page was opened with.
+ *
+ * NEXT_PUBLIC_API_URL is baked in at build time as http://localhost:4000. If
+ * you then browse to http://127.0.0.1:3000, every call goes to a different
+ * host: the browser blocks it on CORS, and because 127.0.0.1 and localhost are
+ * different sites the SameSite=Lax session cookie is dropped too.
+ *
+ * So when the configured host is a loopback name, follow the page's hostname
+ * instead. A real deployment sets NEXT_PUBLIC_API_URL to a non-loopback host,
+ * where this rewrite never applies.
+ */
+function resolveApiOrigin() {
+  const base = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
+  if (typeof window === 'undefined') return base;
+
+  try {
+    const url = new URL(base);
+    if (LOOPBACK_HOSTS.has(url.hostname) && window.location.hostname !== url.hostname) {
+      url.hostname = window.location.hostname;
+      return url.origin;
+    }
+  } catch (_) {
+    // Relative or malformed value; use it as given.
+  }
+  return base;
+}
+
 export function apiBaseUrl() {
-  const base = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
   const namespace = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
-  return `${base.replace(/\/$/, '')}/${namespace.replace(/^\//, '').replace(/\/$/, '')}`;
+  return `${resolveApiOrigin()}/${namespace.replace(/^\//, '').replace(/\/$/, '')}`;
 }
 
 async function parseResponse(response) {

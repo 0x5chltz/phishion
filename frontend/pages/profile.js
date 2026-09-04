@@ -12,6 +12,7 @@ import GridContainer from "/components/Grid/GridContainer.js";
 import GridItem from "/components/Grid/GridItem.js";
 import HeaderLinks from "/components/Header/HeaderLinks.js";
 import Parallax from "/components/Parallax/Parallax.js";
+import { api } from "../lib/api";
 
 import styles from "/styles/jss/nextjs-material-kit/pages/profilePage.js";
 import Seo from "/components/Seo/Seo.js";
@@ -23,22 +24,22 @@ export default function ProfilePage(props) {
 
   const [user, setUser] = useState(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
-
   useEffect(() => {
-    fetch(`${apiUrl}/${backendname}/userinfo`, {
-      credentials: "include",
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Not logged in");
-        return res.json();
+    let cancelled = false;
+    // Via lib/api.js so the API origin follows the page hostname.
+    api
+      .userinfo()
+      .then((data) => {
+        if (!cancelled) setUser(data);
       })
-      .then((data) => setUser(data))
       .catch((err) => {
-        console.error("Unauthorized", err);
+        if (cancelled) return;
+        if (err.status !== 401) console.error("Unable to load user", err);
         setUser(null);
       });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const { ...rest } = props;

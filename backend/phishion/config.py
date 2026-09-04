@@ -1,5 +1,28 @@
 import os
 from datetime import timedelta
+from urllib.parse import urlsplit, urlunsplit
+
+# localhost and 127.0.0.1 are different origins to a browser, so an app served
+# on one and configured to allow only the other fails CORS. During local
+# development you may reach the frontend by either name, so accept both.
+# Nothing is widened here for real hosts: only loopback names get an alias.
+_LOOPBACK_ALIASES = {"localhost": "127.0.0.1", "127.0.0.1": "localhost"}
+
+
+def _with_loopback_aliases(origins):
+    result = []
+    for origin in origins:
+        if origin not in result:
+            result.append(origin)
+        parts = urlsplit(origin)
+        alias_host = _LOOPBACK_ALIASES.get(parts.hostname or "")
+        if not alias_host:
+            continue
+        netloc = f"{alias_host}:{parts.port}" if parts.port else alias_host
+        alias = urlunsplit((parts.scheme, netloc, parts.path, "", ""))
+        if alias not in result:
+            result.append(alias)
+    return result
 
 
 class Config:
@@ -9,9 +32,11 @@ class Config:
     VIRUSTOTAL_API_KEY = os.getenv("VIRUSTOTAL_API_KEY")
     SECURITYTRAILS_API_KEY = os.getenv("SECURITYTRAILS_API_KEY")
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
-    CORS_ORIGINS = [origin.strip() for origin in os.getenv(
-        "CORS_ORIGINS", FRONTEND_URL
-    ).split(",") if origin.strip()]
+    CORS_ORIGINS = _with_loopback_aliases(
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", FRONTEND_URL).split(",")
+        if origin.strip()
+    )
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "false").lower() == "true"
