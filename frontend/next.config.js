@@ -12,6 +12,20 @@ const nextConfig = {
       },
     ];
   },
+  webpack(config, { isServer }) {
+    // Three.js uses modern class field syntax that Terser in Next 12 can't minify.
+    // Exclude it from minification by disabling Terser on its chunks.
+    if (!isServer) {
+      const TerserPlugin = config.optimization.minimizer.find(
+        (p) => p.constructor && p.constructor.name === 'TerserPlugin'
+      );
+      if (TerserPlugin) {
+        const prev = TerserPlugin.options.exclude;
+        TerserPlugin.options.exclude = /three/;
+      }
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
