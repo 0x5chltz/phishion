@@ -82,22 +82,22 @@ const card = {
   borderRadius: "3px",
   color: "rgba(0, 0, 0, 0.87)",
   background: "#fff",
-  fontFamily: "Share Tech Mono",
+  fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 };
 
 const defaultFont = {
-  fontFamily: "Share Tech Mono",
+  fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   fontWeight: "300",
   lineHeight: "1.5em",
 };
 
-const primaryColor = "#9c27b0";
-const warningColor = "#ff9800";
-const dangerColor = "#f44336";
-const successColor = "#4caf50";
-const infoColor = "#00acc1";
+const primaryColor = "#3B82F6";
+const warningColor = "#F59E0B";
+const dangerColor = "#EF4444";
+const successColor = "#22C55E";
+const infoColor = "#38BDF8";
 const roseColor = "#e91e63";
-const grayColor = "#999999";
+const grayColor = "#64748B";
 
 const primaryBoxShadow = {
   boxShadow: `0 12px 20px -10px ${hexToRGBAlpha(

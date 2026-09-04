@@ -1,17 +1,19 @@
 import React from 'react';
+import { useTheme } from '@material-ui/core/styles';
 
 const RADIUS = 60;
 const STROKE = 22;
 const CIRC = 2 * Math.PI * RADIUS;
 
 export default function DonutChart({ segments, size = 160 }) {
+  const theme = useTheme();
   const total = segments.reduce((sum, seg) => sum + (seg.value || 0), 0);
   let offset = 0;
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
       <svg width={size} height={size} viewBox="0 0 160 160">
-        <circle cx="80" cy="80" r={RADIUS} fill="none" stroke="#e0e0e0" strokeWidth={STROKE} />
+        <circle cx="80" cy="80" r={RADIUS} fill="none" stroke={theme.palette.divider} strokeWidth={STROKE} />
         {total > 0 && segments.map((seg, idx) => {
           if (!seg.value) return null;
           const fraction = seg.value / total;
@@ -37,7 +39,7 @@ export default function DonutChart({ segments, size = 160 }) {
         <text x="80" y="80" textAnchor="middle" dominantBaseline="middle" fontSize="28" fontWeight="700" fill="currentColor">
           {total}
         </text>
-        <text x="80" y="104" textAnchor="middle" dominantBaseline="middle" fontSize="12" fill="#888">
+        <text x="80" y="104" textAnchor="middle" dominantBaseline="middle" fontSize="12" fill={theme.palette.text.secondary}>
           total
         </text>
       </svg>

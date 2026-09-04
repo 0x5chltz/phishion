@@ -1,29 +1,31 @@
-const cardStyle = {
+const cardStyle = (theme) => ({
   card: {
-    border: "1px solid rgb(0, 200, 255)",
-    marginBottom: "30px",
-    marginTop: "30px",
-    borderRadius: "6px",
-    color: "rgb(255, 255, 255)",
-    background: "rgba(73, 73, 73, 0.90)",
+    border: `1px solid ${theme.palette.divider}`,
+    marginBottom: "24px",
+    marginTop: "0",
+    borderRadius: "14px",
+    color: theme.palette.text.primary,
+    background: theme.palette.background.paper,
     width: "100%",
-    boxShadow:
-      "0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 1px 5px 0 rgba(0, 0, 0, 0.12)",
+    boxShadow: theme.palette.type === "dark"
+      ? "0 1px 2px 0 rgba(0,0,0,0.3)"
+      : "0 1px 3px 0 rgba(15,23,42,0.08)",
     position: "relative",
     display: "flex",
     flexDirection: "column",
     minWidth: "0",
     wordWrap: "break-word",
     fontSize: ".875rem",
-    transition: "all 300ms linear",
+    transition: "border-color 200ms ease, box-shadow 200ms ease",
   },
   cardPlain: {
     background: "transparent",
     boxShadow: "none",
+    border: "none",
   },
   cardCarousel: {
     overflow: "hidden",
   },
-};
+});
 
 export default cardStyle;

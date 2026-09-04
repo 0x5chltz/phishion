@@ -13,7 +13,7 @@ import {
   drawerWidth
 } from "/styles/jss/nextjs-material-kit.js";
 
-const headerStyle = {
+const headerStyle = (theme) => ({
   appBar: {
     display: "flex",
     border: "0",
@@ -131,12 +131,12 @@ const headerStyle = {
   },
   white: {
     border: "0",
+    borderBottom: `1px solid ${theme.palette.divider}`,
     padding: "0.625rem 0",
     marginBottom: "20px",
-    color: "#555",
-    backgroundColor: "#fff !important",
-    boxShadow:
-      "0 4px 18px 0px rgba(0, 0, 0, 0.12), 0 7px 10px -5px rgba(0, 0, 0, 0.15)"
+    color: `${theme.palette.text.primary} !important`,
+    backgroundColor: `${theme.palette.background.paper} !important`,
+    boxShadow: "none"
   },
   drawerPaper: {
     border: "none",
@@ -160,6 +160,6 @@ const headerStyle = {
     paddingLeft: "0",
     ...transition
   }
-};
+});
 
 export default headerStyle;

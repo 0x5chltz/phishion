@@ -8,7 +8,7 @@ class MyDocument extends Document {
       <Html lang="en">
         <Head>
           <meta charSet="utf-8" />
-          <meta name="theme-color" content="#000000" />
+          <meta name="theme-color" content="#0B1120" />
           <link rel="shortcut icon" href="/img/favicon.png" />
           <link
             rel="apple-touch-icon"
@@ -16,10 +16,12 @@ class MyDocument extends Document {
             href="/img/apple-icon.png"
           />
           {/* Fonts and icons */}
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
           <link
             rel="stylesheet"
             type="text/css"
-            href="https://fonts.googleapis.com/css?family=Share+Tech+Mono:300,400,500,700|Roboto+Slab:400,700|Material+Icons"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Material+Icons&display=swap"
           />
           <link
             href="https://use.fontawesome.com/releases/v5.0.10/css/all.css"

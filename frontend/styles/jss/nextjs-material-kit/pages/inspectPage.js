@@ -67,7 +67,7 @@ const inspectPageStyle = {
     marginTop: "0",
     width: "100%",
     transform: "none",
-    color: "rgb(0, 200, 255)",
+    color: "#3B82F6",
     left: "0",
     top: "0",
     height: "100%",
@@ -92,7 +92,7 @@ const inspectPageStyle = {
     padding: "0"
   },
   inputIconsColor: {
-    color: "rgb(0, 200, 255)",
+    color: "#3B82F6",
   },
   icon: {
     width: "17px",

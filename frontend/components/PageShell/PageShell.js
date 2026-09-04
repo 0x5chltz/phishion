@@ -4,25 +4,27 @@ import Header from '/components/Header/Header.js';
 import HeaderLinks from '/components/Header/HeaderLinks.js';
 import Footer from '/components/Footer/Footer.js';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   main: {
-    paddingTop: 120,
+    paddingTop: 112,
     paddingBottom: 80,
     minHeight: '70vh',
-    background: 'inherit',
   },
   container: {
-    maxWidth: 1100,
+    maxWidth: 1120,
     margin: '0 auto',
-    padding: '0 24px',
+    padding: theme.spacing(0, 3),
   },
   title: {
     fontWeight: 700,
-    marginBottom: 8,
+    marginBottom: 6,
+    letterSpacing: '-0.01em',
   },
   subtitle: {
-    color: '#777',
-    marginBottom: 32,
+    color: theme.palette.text.secondary,
+    marginBottom: theme.spacing(5),
+    fontSize: '1rem',
+    maxWidth: 640,
   },
 }));
 

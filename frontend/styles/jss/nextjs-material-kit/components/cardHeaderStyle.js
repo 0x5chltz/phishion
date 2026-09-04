@@ -13,7 +13,7 @@ const cardHeaderStyle = {
     marginLeft: "15px",
     marginRight: "15px",
     marginTop: "-30px",
-    border: "1px solid rgb(0, 200, 255)",
+    border: "1px solid #3B82F6",
     marginBottom: "0",
     background: "rgb(85, 85, 85)",
   },
