@@ -7,7 +7,7 @@ const footerStyle = {
     fontWeight: "500",
     fontSize: "12px",
     textTransform: "uppercase",
-    borderRadius: "3px",
+    borderRadius: "8px",
     textDecoration: "none",
     position: "relative",
     display: "block"

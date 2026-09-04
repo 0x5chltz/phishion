@@ -3,6 +3,7 @@ import { makeStyles } from '@material-ui/core/styles';
 import Icon from '@material-ui/core/Icon';
 import TextareaAutosize from '@material-ui/core/TextareaAutosize';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import Button from '/components/CustomButtons/Button.js';
@@ -10,7 +11,7 @@ import EmptyState from '/components/EmptyState/EmptyState.js';
 import { api } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   textarea: {
     width: '100%',
     minHeight: 140,
@@ -61,6 +62,11 @@ export default function BatchScan() {
 
   return (
     <PageShell title="Batch URL Scanning" subtitle="Submit up to 10 URLs at once for VirusTotal analysis.">
+      <Seo
+        title="Batch URL Scanning"
+        description="Submit up to 10 suspicious URLs in one pass and get their VirusTotal verdicts back together, so you can triage a phishing campaign quickly."
+        path="/batch"
+      />
       <Card>
         <CardBody>
           <p style={{ color: '#888', marginBottom: 8 }}>One URL per line ({urls.length}/10)</p>

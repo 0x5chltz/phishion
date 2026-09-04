@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Icon from '@material-ui/core/Icon';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import CustomTabs from '/components/CustomTabs/CustomTabs.js';
 import Button from '/components/CustomButtons/Button.js';
 import CustomInput from '/components/CustomInput/CustomInput.js';
@@ -11,7 +12,7 @@ import { api } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 import { useConfirm } from '/components/ConfirmDialog/ConfirmDialog.js';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   form: { display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', alignItems: 'flex-end' },
   listItem: {
     display: 'flex',
@@ -178,8 +179,14 @@ function BlacklistPanel() {
 }
 
 export default function Manage() {
+  const classes = useStyles();
   return (
     <PageShell title="Manage" subtitle="Organize scans with tags, and control trusted or blocked URLs.">
+      <Seo
+        title="Manage Tags and Lists"
+        description="Organize scans with tags and maintain the trusted and blocked URL lists used to classify results across your Phishion workspace."
+        path="/manage"
+      />
       <CustomTabs
         headerColor="primary"
         tabs={[

@@ -3,7 +3,7 @@ const cardStyle = {
     border: "0",
     marginBottom: "30px",
     marginTop: "30px",
-    borderRadius: "6px",
+    borderRadius: "12px",
     color: "rgb(255, 255, 255)",
     background: "rgba(73, 73, 73, 0.90)",
     width: "100%",

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import GridContainer from '/components/Grid/GridContainer.js';
@@ -11,7 +12,7 @@ import DonutChart from '/components/DonutChart/DonutChart.js';
 import { api } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   statCard: { textAlign: 'center', padding: '24px 12px' },
   statValue: { fontSize: 32, fontWeight: 700 },
   statLabel: { color: '#888', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -35,6 +36,11 @@ export default function Analytics() {
 
   return (
     <PageShell title="Analytics Dashboard" subtitle="Threat trends and scan statistics across your account.">
+      <Seo
+        title="Analytics"
+        description="Threat trends and verdict distribution across your scans, showing how many submitted URLs came back malicious, suspicious, or clean."
+        path="/analytics"
+      />
       {loading || !analytics ? (
         <LoadingBar label="Crunching analytics..." />
       ) : (

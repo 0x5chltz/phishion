@@ -5,6 +5,10 @@ html * {
 body {
   font-size: 1rem;
 }
+// Heading scale is kept in sync with the MUI theme typography in
+// context/ThemeContext.js so bare heading tags and <Typography> agree.
+// Previously this block forced Roboto 300 onto every bare tag, which
+// silently overrode the theme everywhere outside a <Typography>.
 body,
 h1,
 h2,
@@ -12,9 +16,11 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: "Roboto", "Helvetica", "Arial", sans-serif;
-  font-weight: 300;
-  line-height: 1.5em;
+  font-family: $font-family-sans;
+}
+body {
+  font-weight: 400;
+  line-height: 1.6;
 }
 h1,
 h2,
@@ -37,45 +43,55 @@ h6 {
   margin-bottom: 10px;
 }
 h1 {
-  font-size: 3.3125rem;
-  line-height: 1.15em;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 h2 {
-  font-size: 2.25rem;
-  line-height: 1.5em;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 h3 {
-  font-size: 1.5625rem;
-  line-height: 1.4em;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
 }
 h4 {
-  font-size: 1.125rem;
-  line-height: 1.5em;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 h5 {
-  font-size: 1.0625rem;
-  line-height: 1.55em;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 h6 {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 p {
-  font-size: 14px;
+  font-size: 1rem;
+  line-height: 1.6;
   margin: 0 0 10px;
 }
 html {
-  font-family: sans-serif;
+  font-family: $font-family-sans;
   line-height: 1.15;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
   -ms-overflow-style: scrollbar;
   -webkit-tap-highlight-color: transparent;
 }
+// Background and text colour are owned by the MUI theme (CssBaseline in
+// context/ThemeContext.js) so they follow the light/dark toggle. Setting
+// them here used to hardcode a fifth background value that only lost to the
+// theme by JSS injection order, which is fragile.
 body {
-  background-color: #e5e5e5;
-  color: $black-color;
   margin: 0;
   font-size: 1rem;
   text-align: left;

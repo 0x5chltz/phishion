@@ -5,6 +5,15 @@ import tooltipsStyle from "/styles/jss/nextjs-material-kit/tooltipsStyle.js";
 import popoverStyles from "/styles/jss/nextjs-material-kit/popoverStyles.js";
 
 const inspectPageStyle = {
+  // The scan form's heading is the page's single <h1>, so it needs an explicit
+  // size. Left to the global h1 rule it would render at the 2.5rem display
+  // scale inside a narrow card.
+  cardTitle: {
+    fontSize: "1.25rem",
+    fontWeight: 600,
+    lineHeight: 1.35,
+    margin: "0"
+  },
   container: {
     ...container,
     zIndex: "2",
@@ -81,9 +90,9 @@ const inspectPageStyle = {
   },
   cardFooter: {
     paddingTop: "0rem",
-    fontFamily: '"Share Tech Mono", "Roboto", "Helvetica", "Arial", sans-serif',
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     border: "0",
-    borderRadius: "6px",
+    borderRadius: "12px",
     justifyContent: "center !important"
   },
   socialLine: {

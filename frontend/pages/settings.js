@@ -3,6 +3,7 @@ import { makeStyles } from '@material-ui/core/styles';
 import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import Button from '/components/CustomButtons/Button.js';
@@ -12,7 +13,7 @@ import { api } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 import { useThemeMode } from '../context/ThemeContext';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   row: { marginBottom: 20 },
 }));
 
@@ -59,6 +60,12 @@ export default function Settings() {
 
   return (
     <PageShell title="Settings" subtitle="Customize theme, timezone, and notification preferences.">
+      <Seo
+        title="Settings"
+        description="Customize your Phishion account preferences, including theme, timezone, and how you are notified about scan results and scheduled runs."
+        path="/settings"
+        noindex
+      />
       <Card>
         <CardBody>
           {loading ? (

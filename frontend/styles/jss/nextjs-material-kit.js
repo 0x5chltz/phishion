@@ -79,15 +79,25 @@ const card = {
   width: "100%",
   margin: "25px 0",
   boxShadow: "0 1px 4px 0 rgba(0, 0, 0, 0.14)",
-  borderRadius: "3px",
+  borderRadius: "8px",
   color: "rgba(0, 0, 0, 0.87)",
   background: "#fff",
   fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 };
 
+// Single source of truth for the UI typeface. Must stay in sync with the
+// families requested in pages/_document.js and with FONT_STACK in
+// context/ThemeContext.js.
+const fontFamilySans =
+  '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const fontFamilyMono =
+  '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+
 const defaultFont = {
-  fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  fontWeight: "300",
+  fontFamily: fontFamilySans,
+  // Was 300. Inter 300 is not among the weights requested in _document.js,
+  // so it was being synthesised by the browser.
+  fontWeight: "400",
   lineHeight: "1.5em",
 };
 
@@ -151,29 +161,32 @@ const roseBoxShadow = {
   )}, 0 7px 10px -5px ${hexToRGBAlpha(roseColor, 0.4)}`,
 };
 
+// Card-header fills are derived from the semantic tokens above rather than
+// the template's original Material palette. Before this, primaryCardHeader
+// was still purple (#ab47bc) while primaryColor had already moved to blue.
 const warningCardHeader = {
   color: "#fff",
-  background: "linear-gradient(60deg, #ffa726, #fb8c00)",
+  background: warningColor,
   ...warningBoxShadow,
 };
 const successCardHeader = {
   color: "#fff",
-  background: "linear-gradient(60deg, #66bb6a, #43a047)",
+  background: successColor,
   ...successBoxShadow,
 };
 const dangerCardHeader = {
   color: "#fff",
-  background: "linear-gradient(60deg, #ef5350, #e53935)",
+  background: dangerColor,
   ...dangerBoxShadow,
 };
 const infoCardHeader = {
   color: "#fff",
-  background: "linear-gradient(60deg, #26c6da, #00acc1)",
+  background: infoColor,
   ...infoBoxShadow,
 };
 const primaryCardHeader = {
   color: "#fff",
-  background: "linear-gradient(60deg, #ab47bc, #8e24aa)",
+  background: primaryColor,
   ...primaryBoxShadow,
 };
 const roseCardHeader = {
@@ -191,13 +204,13 @@ const cardActions = {
 
 const cardHeader = {
   margin: "-30px 15px 0",
-  borderRadius: "3px",
+  borderRadius: "8px",
   padding: "15px",
 };
 
 const defaultBoxShadow = {
   border: "0",
-  borderRadius: "3px",
+  borderRadius: "8px",
   boxShadow:
     "0 10px 20px -12px rgba(0, 0, 0, 0.42), 0 3px 20px 0px rgba(0, 0, 0, 0.12), 0 8px 10px -5px rgba(0, 0, 0, 0.2)",
   padding: "10px 0",
@@ -205,11 +218,12 @@ const defaultBoxShadow = {
 };
 
 const title = {
-  color: "#3C4858",
+  // Colour intentionally inherits so headings follow the light/dark theme.
+  // Was hardcoded #3C4858, which only worked on light surfaces.
   margin: "1.75rem 0 0.875rem",
   textDecoration: "none",
   fontWeight: "700",
-  fontFamily: `"Share Tech Mono", "Roboto Slab", "Times New Roman", serif`,
+  fontFamily: fontFamilySans,
 };
 
 const cardTitle = {
@@ -238,6 +252,8 @@ export {
   boxShadow,
   card,
   defaultFont,
+  fontFamilySans,
+  fontFamilyMono,
   primaryColor,
   warningColor,
   dangerColor,

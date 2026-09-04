@@ -41,7 +41,7 @@ const navPillsStyle = (theme) => ({
     float: "left",
     position: "relative",
     display: "block",
-    borderRadius: "30px",
+    borderRadius: "999px",
     minWidth: "100px",
     textAlign: "center",
     transition: "all .3s",
@@ -53,7 +53,7 @@ const navPillsStyle = (theme) => ({
     margin: "0 5px"
   },
   pillsWithIcons: {
-    borderRadius: "4px"
+    borderRadius: "8px"
   },
   tabIcon: {
     width: "30px",

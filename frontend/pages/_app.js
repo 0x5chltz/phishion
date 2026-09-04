@@ -1,22 +1,4 @@
-/*!
-
-=========================================================
-* NextJS Material Kit v1.2.2 based on Material Kit Free - v2.0.2 (Bootstrap 4.0.0 Final Edition) and Material Kit React v1.8.0
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/nextjs-material-kit
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-* Licensed under MIT (https://github.com/creativetimofficial/nextjs-material-kit/blob/main/LICENSE.md)
-
-* Coded by Creative Tim
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-*/
 import React from "react";
-import App from "next/app";
 import Head from "next/head";
 import "/styles/scss/nextjs-material-kit.scss?v=1.2.0";
 import { AuthProvider } from "/context/AuthContext.js";
@@ -24,58 +6,30 @@ import { NotificationProvider } from "/context/NotificationContext.js";
 import { ConfirmProvider } from "/components/ConfirmDialog/ConfirmDialog.js";
 import { ThemeModeProvider } from "/context/ThemeContext.js";
 
-export default class MyApp extends App {
-  componentDidMount() {
-    let comment = document.createComment(`
-
-=========================================================
-* NextJS Material Kit v1.2.2 based on Material Kit Free - v2.0.2 (Bootstrap 4.0.0 Final Edition) and Material Kit React v1.8.0
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/nextjs-material-kit
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-* Licensed under MIT (https://github.com/creativetimofficial/nextjs-material-kit/blob/main/LICENSE.md)
-
-* Coded by Creative Tim
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-`);
-    document.insertBefore(comment, document.documentElement);
-  }
-  static async getInitialProps({ Component, router, ctx }) {
-    let pageProps = {};
-
-    if (Component.getInitialProps) {
-      pageProps = await Component.getInitialProps(ctx);
-    }
-
-    return { pageProps };
-  }
-  render() {
-    const { Component, pageProps } = this.props;
-
-    return (
-      <React.Fragment>
-        <Head>
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1, shrink-to-fit=no"
-          />
-          <title>Phishion</title>
-        </Head>
-        <ThemeModeProvider>
-          <NotificationProvider>
-            <ConfirmProvider>
-              <AuthProvider>
-                <Component {...pageProps} />
-              </AuthProvider>
-            </ConfirmProvider>
-          </NotificationProvider>
-        </ThemeModeProvider>
-      </React.Fragment>
-    );
-  }
+// This used to extend next/app with a static getInitialProps that only
+// forwarded pageProps. Its mere presence disabled Automatic Static
+// Optimization for every route, so each crawler request paid for a full
+// server render while the head was a single hardcoded title. Pages that need
+// request-time data fetch it client side, and pages/result.js reads
+// router.query behind a router.isReady guard, so static optimization is safe.
+export default function MyApp({ Component, pageProps }) {
+  return (
+    <React.Fragment>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Per-page titles and descriptions come from components/Seo/Seo.js.
+            This title is only the fallback for any route without one. */}
+        <title>Phishion</title>
+      </Head>
+      <ThemeModeProvider>
+        <NotificationProvider>
+          <ConfirmProvider>
+            <AuthProvider>
+              <Component {...pageProps} />
+            </AuthProvider>
+          </ConfirmProvider>
+        </NotificationProvider>
+      </ThemeModeProvider>
+    </React.Fragment>
+  );
 }

@@ -3,6 +3,7 @@ import { makeStyles } from '@material-ui/core/styles';
 import Chip from '@material-ui/core/Chip';
 import Icon from '@material-ui/core/Icon';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import Button from '/components/CustomButtons/Button.js';
@@ -15,7 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotify } from '../context/NotificationContext';
 import { usePagination } from '../lib/usePagination';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   filterRow: { marginBottom: 24, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' },
   row: {
     borderBottom: '1px solid #eee',
@@ -96,7 +97,12 @@ export default function History() {
   };
 
   return (
-    <PageShell title="Scan History" subtitle="Every URL you've submitted, with verdicts, tags, and quick actions.">
+    <PageShell title="Scan History" subtitle="Every URL you have submitted, with verdicts, tags, and quick actions.">
+      <Seo
+        title="Scan History"
+        description="Review every URL you have submitted to Phishion, with VirusTotal verdicts, tags, and CSV or JSON export for offline triage."
+        path="/history"
+      />
       <Card>
         <CardBody>
           <div className={classes.filterRow}>

@@ -8,7 +8,7 @@ import {
 
 const cardHeaderStyle = {
   cardHeader: {
-    borderRadius: "3px",
+    borderRadius: "12px",
     padding: "1rem 15px",
     marginLeft: "15px",
     marginRight: "15px",

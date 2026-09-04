@@ -6,6 +6,7 @@ import InputLabel from '@material-ui/core/InputLabel';
 import FormControl from '@material-ui/core/FormControl';
 import Icon from '@material-ui/core/Icon';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import GridContainer from '/components/Grid/GridContainer.js';
@@ -19,7 +20,7 @@ import { api, exportUrl } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 import { usePagination } from '../lib/usePagination';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   row: { borderBottom: '1px solid #eee', padding: '12px 4px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 },
 }));
 
@@ -57,6 +58,11 @@ export default function Search() {
 
   return (
     <PageShell title="Search & Export" subtitle="Filter your scan history by URL, verdict, and date range.">
+      <Seo
+        title="Search & Export"
+        description="Filter your scan history by URL fragment, verdict, and date range, then export the matching results as CSV or JSON for reporting."
+        path="/search"
+      />
       <Card>
         <CardBody>
           <form onSubmit={handleSearch}>

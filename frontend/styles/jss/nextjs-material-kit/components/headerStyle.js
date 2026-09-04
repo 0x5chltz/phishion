@@ -17,7 +17,7 @@ const headerStyle = (theme) => ({
   appBar: {
     display: "flex",
     border: "0",
-    borderRadius: "3px",
+    borderRadius: "12px",
     padding: "0.625rem 0",
     marginBottom: "20px",
     color: "rgba(9, 8, 8, 0.8)",
@@ -56,7 +56,7 @@ const headerStyle = (theme) => ({
     ...defaultFont,
     lineHeight: "30px",
     fontSize: "18px",
-    borderRadius: "3px",
+    borderRadius: "12px",
     textTransform: "none",
     color: "inherit",
     padding: "8px 16px",

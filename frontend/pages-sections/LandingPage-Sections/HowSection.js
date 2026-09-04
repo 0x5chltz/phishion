@@ -1,61 +1,110 @@
 import React from "react";
 // @material-ui/core components
 import { makeStyles } from "@material-ui/core/styles";
-
-// @material-ui/icons
-import Chat from "@material-ui/icons/Chat";
-import VerifiedUser from "@material-ui/icons/VerifiedUser";
-import Fingerprint from "@material-ui/icons/Fingerprint";
 // core components
 import GridContainer from "/components/Grid/GridContainer.js";
 import GridItem from "/components/Grid/GridItem.js";
-import InfoArea from "/components/InfoArea/InfoArea.js";
 
-import styles from "/styles/jss/nextjs-material-kit/pages/landingPageSections/productStyle.js";
-import { Adb, AlarmOn, Android, BluetoothSearchingTwoTone, ImageSearch, LocationSearching, MyLocation, Person, SportsRugbyTwoTone, ZoomIn } from "@material-ui/icons";
-
-const useStyles = makeStyles(styles);
+const useStyles = makeStyles((theme) => ({
+  section: {
+    padding: "48px 0 64px"
+  },
+  title: {
+    fontSize: "2rem",
+    fontWeight: 700,
+    letterSpacing: "-0.01em",
+    margin: "0 0 32px"
+  },
+  step: {
+    display: "flex",
+    gap: "24px",
+    alignItems: "flex-start",
+    padding: "24px 0",
+    borderTop: `1px solid ${theme.palette.divider}`
+  },
+  marker: {
+    width: "6px",
+    alignSelf: "stretch",
+    borderRadius: 999,
+    background: theme.palette.primary.main,
+    flexShrink: 0,
+    opacity: 0.85
+  },
+  stepBody: {
+    flex: 1,
+    minWidth: 0
+  },
+  stepTitle: {
+    fontSize: "1.125rem",
+    fontWeight: 600,
+    margin: "0 0 6px"
+  },
+  stepText: {
+    color: theme.palette.text.secondary,
+    margin: 0,
+    maxWidth: "62ch",
+    lineHeight: 1.6
+  },
+  code: {
+    fontSize: "0.875rem",
+    padding: "2px 6px",
+    borderRadius: 8,
+    background:
+      theme.palette.type === "dark"
+        ? "rgba(148, 163, 184, 0.14)"
+        : "rgba(15, 23, 42, 0.06)"
+  },
+  "@media (max-width: 599px)": {
+    step: { gap: "16px" }
+  }
+}));
 
 export default function HowSection() {
   const classes = useStyles();
   return (
     <div className={classes.section}>
-      <GridContainer justify="center">
-        <GridItem xs={12} sm={12} md={8}>
+      <GridContainer>
+        <GridItem xs={12} md={10}>
           <h2 className={classes.title}>How it works</h2>
+
+          <div className={classes.step}>
+            <span className={classes.marker} aria-hidden="true" />
+            <div className={classes.stepBody}>
+              <h3 className={classes.stepTitle}>Submit a URL</h3>
+              <p className={classes.stepText}>
+                Paste any <span className={`${classes.code} mono`}>http</span> or{" "}
+                <span className={`${classes.code} mono`}>https</span> address.
+                Phishion validates the scheme and host before anything leaves
+                your account, and rejects everything else.
+              </p>
+            </div>
+          </div>
+
+          <div className={classes.step}>
+            <span className={classes.marker} aria-hidden="true" />
+            <div className={classes.stepBody}>
+              <h3 className={classes.stepTitle}>It goes to the engines</h3>
+              <p className={classes.stepText}>
+                The URL is queued with VirusTotal, which runs it past over 70
+                antivirus and blocklist engines. Analysis is asynchronous, so
+                the result page polls until the verdict settles.
+              </p>
+            </div>
+          </div>
+
+          <div className={classes.step}>
+            <span className={classes.marker} aria-hidden="true" />
+            <div className={classes.stepBody}>
+              <h3 className={classes.stepTitle}>Triage the result</h3>
+              <p className={classes.stepText}>
+                Read the verdict and the per-engine detail, tag the scan, push
+                the host onto a whitelist or blacklist, and export the record
+                when you need it somewhere else.
+              </p>
+            </div>
+          </div>
         </GridItem>
       </GridContainer>
-      <div>
-        <GridContainer justify="center">
-          <GridItem xs={12} sm={12} md={4}>
-            <InfoArea
-              title="Inspect"
-              description="Let's dive deep into that URL like it's a treasure map leading to lost riches or something."
-              icon={ZoomIn}
-              iconColor="info"
-              vertical
-            />
-          </GridItem>
-          <GridItem xs={12} sm={12} md={4}>
-            <InfoArea
-              title="Spot on"
-              description="API is the ultimate URL chef, throwing over 70 antivirus engines into the pot and stirring up a delectable stew of aggregated URLs that even your grandma would love!"
-              icon={MyLocation}
-              iconColor="success"
-              vertical
-            />
-          </GridItem>
-          <GridItem xs={12} sm={12} md={4}>
-            <InfoArea
-              title="Rapid"
-              description="Get your detection results quicker than you can say 'abracadabra!'"
-              icon={AlarmOn}
-              iconColor="danger"
-              vertical
-            />
-          </GridItem>
-        </GridContainer>
-      </div>
     </div>
   );
 }

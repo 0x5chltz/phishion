@@ -22,7 +22,7 @@ const customTabsStyle = {
     maxWidth: "unset !important",
     maxHeight: "unset !important",
     padding: "10px 15px",
-    borderRadius: "3px",
+    borderRadius: "8px",
     lineHeight: "24px",
     border: "0 !important",
     color: "#fff !important",

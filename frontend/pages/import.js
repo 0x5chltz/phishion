@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Icon from '@material-ui/core/Icon';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import Button from '/components/CustomButtons/Button.js';
@@ -9,7 +10,7 @@ import EmptyState from '/components/EmptyState/EmptyState.js';
 import { importScans } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   dropzone: {
     border: '2px dashed #ccc',
     borderRadius: 8,
@@ -66,6 +67,11 @@ export default function BulkImport() {
 
   return (
     <PageShell title="Bulk Import" subtitle="Upload a CSV or TXT file with URLs to queue for scanning.">
+      <Seo
+        title="Bulk Import"
+        description="Upload a CSV or TXT list of URLs to queue for scanning, so indicators from a takedown list or an incident report can be checked in one go."
+        path="/import"
+      />
       <Card>
         <CardBody>
           <div

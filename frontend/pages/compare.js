@@ -5,6 +5,7 @@ import Select from '@material-ui/core/Select';
 import InputLabel from '@material-ui/core/InputLabel';
 import FormControl from '@material-ui/core/FormControl';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import GridContainer from '/components/Grid/GridContainer.js';
@@ -15,7 +16,7 @@ import LoadingBar from '/components/LoadingBar/LoadingBar.js';
 import { api } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   select: { minWidth: 260, marginBottom: 16 },
   metric: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' },
 }));
@@ -55,6 +56,11 @@ export default function Compare() {
 
   return (
     <PageShell title="Compare Scans" subtitle="See how two scan results differ, side by side.">
+      <Seo
+        title="Compare Scans"
+        description="Put two scan results side by side to see how a URL verdict, its detection counts, and its engine coverage changed between the runs."
+        path="/compare"
+      />
       <Card>
         <CardBody>
           <GridContainer>

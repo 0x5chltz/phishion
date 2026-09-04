@@ -69,7 +69,7 @@ const customInputStyle = {
     height: "unset",
     "&,&::placeholder": {
       fontSize: "14px",
-      fontFamily: '"Share Tech Mono", "Roboto", "Helvetica", "Arial", sans-serif',
+      fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       fontWeight: "400",
       lineHeight: "1.42857",
       opacity: "1"

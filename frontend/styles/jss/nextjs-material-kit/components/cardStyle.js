@@ -3,7 +3,7 @@ const cardStyle = (theme) => ({
     border: `1px solid ${theme.palette.divider}`,
     marginBottom: "24px",
     marginTop: "0",
-    borderRadius: "14px",
+    borderRadius: "12px",
     color: theme.palette.text.primary,
     background: theme.palette.background.paper,
     width: "100%",

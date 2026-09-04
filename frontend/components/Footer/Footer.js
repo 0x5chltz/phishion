@@ -30,16 +30,7 @@ export default function Footer(props) {
     <footer className={footerClasses}>
       <div className={classes.container}>
         <div className={classes.center}>
-          &copy; {1900 + new Date().getYear()} , made with{" "}
-          <Favorite className={classes.icon} /> by{" "}
-          <a
-            href="https://www.creative-tim.com?ref=njsmk-footer"
-            className={aClasses}
-            target="_blank"
-          >
-            Cicit Linus
-          </a>{" "}
-          for a better web.
+          &copy; {new Date().getFullYear()} Phishion
         </div>
       </div>
     </footer>

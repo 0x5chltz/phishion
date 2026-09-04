@@ -14,7 +14,7 @@ const paginationStyle = {
     display: "inline-block",
     paddingLeft: "0",
     margin: "0 0 20px 0",
-    borderRadius: "4px"
+    borderRadius: "8px"
   },
   paginationItem: {
     display: "inline"
@@ -25,7 +25,7 @@ const paginationStyle = {
     },
     letterSpacing: "unset",
     border: "0",
-    borderRadius: "30px !important",
+    borderRadius: "999px !important",
     transition: "all .3s",
     padding: "0px 11px",
     margin: "0 3px",

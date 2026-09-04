@@ -10,7 +10,7 @@ import {
 const badgeStyle = {
   badge: {
     marginRight: "3px",
-    borderRadius: "12px",
+    borderRadius: "999px",
     padding: "5px 12px",
     textTransform: "uppercase",
     fontSize: "10px",

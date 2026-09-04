@@ -4,6 +4,7 @@ import MenuItem from '@material-ui/core/MenuItem';
 import Select from '@material-ui/core/Select';
 import Icon from '@material-ui/core/Icon';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import Button from '/components/CustomButtons/Button.js';
@@ -14,7 +15,7 @@ import { api } from '../lib/api';
 import { useNotify } from '../context/NotificationContext';
 import { useConfirm } from '/components/ConfirmDialog/ConfirmDialog.js';
 
-const useStyles = makeStyles(() => ({
+const useStyles = makeStyles((theme) => ({
   form: { display: 'flex', gap: 12, alignItems: 'center', marginBottom: 24, flexWrap: 'wrap' },
   item: {
     display: 'flex',
@@ -72,6 +73,11 @@ export default function ScheduledScans() {
 
   return (
     <PageShell title="Scheduled Scans" subtitle="Automatically re-scan critical URLs on a recurring basis.">
+      <Seo
+        title="Scheduled Scans"
+        description="Set recurring re-scans for URLs you are monitoring, so a phishing page that only goes live after your first check does not slip past."
+        path="/scheduled"
+      />
       <Card>
         <CardBody>
           <div className={classes.form}>

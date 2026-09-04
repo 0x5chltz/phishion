@@ -1,0 +1,17 @@
+# Phishion robots.txt
+# NOTE: robots.txt is served as a static file, so it cannot interpolate
+# NEXT_PUBLIC_SITE_URL at request time. The Sitemap line below uses the same
+# default as that env var (http://localhost:3000). Before deploying, replace the
+# host on the Sitemap line with the production origin you set in
+# NEXT_PUBLIC_SITE_URL.
+
+User-agent: *
+Allow: /
+
+# Account-sensitive routes, keep these out of search results.
+Disallow: /settings
+Disallow: /delete
+Disallow: /profile
+Disallow: /logout
+
+Sitemap: http://localhost:3000/sitemap.xml

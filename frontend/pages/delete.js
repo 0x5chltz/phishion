@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Router from 'next/router';
 import { makeStyles } from '@material-ui/core/styles';
 import PageShell from '/components/PageShell/PageShell.js';
+import Seo from '/components/Seo/Seo.js';
 import Card from '/components/Card/Card.js';
 import CardBody from '/components/Card/CardBody.js';
 import Button from '/components/CustomButtons/Button.js';
@@ -31,6 +32,12 @@ export default function DeleteAccount() {
 
   return (
     <PageShell title="Delete Account">
+      <Seo
+        title="Delete Account"
+        description="Permanently delete your Phishion account and every scan record associated with it. This action cannot be undone once it is confirmed."
+        path="/delete"
+        noindex
+      />
       <Card className={classes.card}>
         <CardBody>
           <p>

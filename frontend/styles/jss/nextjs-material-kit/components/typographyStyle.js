@@ -10,7 +10,7 @@ import {
 const typographyStyle = {
   defaultFontStyle: {
     ...defaultFont,
-    fontFamily: "Share Tech Mono",
+    fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     fontSize: "14px",
   },
   defaultHeaderMargins: {
