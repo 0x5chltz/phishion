@@ -57,9 +57,9 @@ def create_app(config_name=None):
 
     from .routes.auth import bp as auth_bp
     from .routes.domains import bp as domains_bp
+    from .routes.features import bp as features_bp
     from .routes.health import bp as health_bp
     from .routes.scans import bp as scans_bp
-    from .routes.features import bp as features_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
@@ -74,6 +74,12 @@ def create_app(config_name=None):
     @app.after_request
     def response_headers(response):
         response.headers["X-Request-ID"] = g.request_id
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "same-origin"
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+        if app.config.get("SESSION_COOKIE_SECURE"):
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
         return response
 
     @app.errorhandler(404)

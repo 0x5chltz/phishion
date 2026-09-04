@@ -1,16 +1,24 @@
-from datetime import UTC, datetime, timedelta
+import csv
+import io
+from datetime import datetime
+
 from flask import Blueprint, current_app, jsonify, request
-from sqlalchemy import func, or_
-import csv, io, json as json_lib
+
 from ..auth import login_required
 from ..extensions import db
 from ..models import (
-    Scan, ScanTag, URLWhitelist, URLBlacklist, ScheduledScan,
-    UserPreferences, APIUsage
+    APIUsage,
+    Scan,
+    ScanTag,
+    ScheduledScan,
+    URLBlacklist,
+    URLWhitelist,
+    UserPreferences,
 )
 from ..security import csrf_protect
 from ..services.threat_intel import UpstreamError, virus_total
 from ..validators import is_valid_scan_url
+from .scans import daily_scan_count
 
 bp = Blueprint("features", __name__, url_prefix="/api")
 
@@ -34,6 +42,17 @@ def batch_scan(user):
     invalid = [u for u in urls if not is_valid_scan_url(u)]
     if invalid:
         return jsonify({"error": f"Invalid URLs: {', '.join(invalid[:3])}"}), 400
+
+    db.session.refresh(user, with_for_update=True)
+    count = daily_scan_count(user.id)
+    limit = current_app.config["DAILY_SCAN_LIMIT"]
+    remaining_quota = limit - count
+    if remaining_quota <= 0:
+        return jsonify({"error": f"Daily scan limit reached ({limit} per day)"}), 429
+    if len(urls) > remaining_quota:
+        return jsonify({
+            "error": f"Cannot scan {len(urls)} URLs. Only {remaining_quota} scans remaining today"
+        }), 429
 
     scans, errors = [], []
     for url in urls:
@@ -302,13 +321,13 @@ def search_scans(user):
     if date_from:
         try:
             q = q.filter(Scan.scanned_at >= datetime.fromisoformat(date_from))
-        except:
-            pass
+        except ValueError:
+            return jsonify({"error": "Invalid date_from"}), 400
     if date_to:
         try:
             q = q.filter(Scan.scanned_at <= datetime.fromisoformat(date_to))
-        except:
-            pass
+        except ValueError:
+            return jsonify({"error": "Invalid date_to"}), 400
 
     scans = q.order_by(Scan.scanned_at.desc()).all()
     return jsonify({"scans": [scan.to_dict() for scan in scans]})
@@ -382,8 +401,16 @@ def import_urls(user):
     except Exception as e:
         return jsonify({"error": f"File parse error: {str(e)}"}), 400
 
+    db.session.refresh(user, with_for_update=True)
+    count = daily_scan_count(user.id)
+    limit = current_app.config["DAILY_SCAN_LIMIT"]
+    remaining_quota = max(0, limit - count)
+    if remaining_quota <= 0:
+        return jsonify({"error": f"Daily scan limit reached ({limit} per day)"}), 429
+
+    importable = urls[:min(10, remaining_quota)]
     scans, errors = [], []
-    for url in urls[:10]:
+    for url in importable:
         try:
             submission = virus_total.submit_url(url)
             scan = Scan(user_id=user.id, scanned_url=url, vt_analysis_id=submission["analysis_id"], vt_url_id=submission.get("url_id"), status="queued")

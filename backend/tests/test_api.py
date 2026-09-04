@@ -168,6 +168,44 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(result["verdict"], "malicious")
         self.assertEqual(result["malicious"], 2)
 
+    @patch("phishion.routes.features.virus_total.submit_url")
+    def test_batch_scan_rejects_once_daily_quota_is_reached(self, submit_url):
+        submit_url.return_value = {"analysis_id": "a", "url_id": "u"}
+        with self.app.app_context():
+            db.session.add_all([
+                Scan(user_id=self.user_id, scanned_url=f"https://example.com/{i}")
+                for i in range(5)
+            ])
+            db.session.commit()
+
+        self.login()
+        response = self.client.post(
+            "/api/batch-scan",
+            json={"urls": ["https://example.com/new"]},
+            headers={"X-CSRF-Token": self.csrf()},
+        )
+        self.assertEqual(response.status_code, 429)
+        submit_url.assert_not_called()
+
+    @patch("phishion.routes.features.virus_total.submit_url")
+    def test_batch_scan_is_capped_by_remaining_daily_quota(self, submit_url):
+        submit_url.return_value = {"analysis_id": "a", "url_id": "u"}
+        with self.app.app_context():
+            db.session.add_all([
+                Scan(user_id=self.user_id, scanned_url=f"https://example.com/{i}")
+                for i in range(3)
+            ])
+            db.session.commit()
+
+        self.login()
+        response = self.client.post(
+            "/api/batch-scan",
+            json={"urls": ["https://a.example.com", "https://b.example.com", "https://c.example.com"]},
+            headers={"X-CSRF-Token": self.csrf()},
+        )
+        self.assertEqual(response.status_code, 429)
+        submit_url.assert_not_called()
+
     def test_history_only_returns_current_users_scans(self):
         with self.app.app_context():
             bob = User(username="bob", email="bob@example.com")
