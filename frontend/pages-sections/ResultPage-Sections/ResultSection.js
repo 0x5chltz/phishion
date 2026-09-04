@@ -62,7 +62,7 @@ function scanIdFromStorage() {
   }
 }
 
-export default function ResultSection() {
+export default function ResultSection({ onVerdictChange }) {
   const classes = useStyles();
   const router = useRouter();
 
@@ -122,6 +122,10 @@ export default function ResultSection() {
           // completed, failed, or anything terminal: stop polling.
           setLoading(false);
           stopPolling();
+          // Notify parent of verdict so robot laser color updates
+          if (onVerdictChange) {
+            onVerdictChange(verdictOf(nextScan));
+          }
           return;
         }
 

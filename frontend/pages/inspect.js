@@ -1,16 +1,12 @@
 import React from "react";
 import dynamic from "next/dynamic";
 
-// Core components
 import Header from "/components/Header/Header.js";
 import HeaderLinks from "/components/Header/HeaderLinks.js";
 import Footer from "/components/Footer/Footer.js";
 import Seo from "/components/Seo/Seo.js";
-
-// sections
 import InspectSection from "/pages-sections/InspectPage-Sections/InspectSection.js";
 
-// 3D Robot scene — loaded client-side only (Three.js needs window)
 const RobotScene = dynamic(
   () => import("/components/RobotScene/RobotScene.js"),
   { ssr: false }
@@ -18,54 +14,57 @@ const RobotScene = dynamic(
 
 export default function Inspect(props) {
   const { ...rest } = props;
-
   return (
-    <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#0B1120" }}>
+    <div>
       <Seo
-        title="Inspect a URL"
-        description="Submit a suspicious URL for analysis against over 70 antivirus and blocklist engines, and get the per-engine verdict back."
+        title="Inspect URL"
+        description="Submit a URL to Phishion for a phishing and malware scan."
         path="/inspect"
       />
+      <h1
+        style={{
+          position: "absolute", width: 1, height: 1, padding: 0,
+          margin: -1, overflow: "hidden", clip: "rect(0,0,0,0)",
+          whiteSpace: "nowrap", border: 0,
+        }}
+      >
+        Inspect URL
+      </h1>
 
-      {/* 3D Robot background — fills viewport behind everything */}
-      <RobotScene />
-
-      {/* Navigation */}
       <Header
         color="transparent"
         brand="Phishion"
         rightLinks={<HeaderLinks />}
         fixed
-        changeColorOnScroll={{
-          height: 200,
-          color: "white",
-        }}
+        changeColorOnScroll={{ height: 200, color: "white" }}
         {...rest}
       />
 
-      {/* Form card overlay — floats on top of canvas */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          pointerEvents: "none",
-          zIndex: 10,
-        }}
-      >
-        <div style={{ pointerEvents: "all", width: "100%" }}>
-          <InspectSection />
+      {/* Full-viewport scene wrapper */}
+      <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#0B1120" }}>
+
+        {/* 3D robot canvas — fills entire background */}
+        <RobotScene mode="inspect" verdict={null} />
+
+        {/* Card overlay — left-aligned, vertically centred, above canvas */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0, left: 0,
+            width: "100%", height: "100%",
+            display: "flex",
+            alignItems: "center",
+            pointerEvents: "none",
+            zIndex: 10,
+          }}
+        >
+          <div style={{ pointerEvents: "all", width: "100%" }}>
+            <InspectSection />
+          </div>
         </div>
       </div>
 
-      {/* Footer pinned at bottom */}
-      <div style={{ position: "absolute", bottom: 0, width: "100%", zIndex: 10 }}>
-        <Footer />
-      </div>
+      <Footer />
     </div>
   );
 }

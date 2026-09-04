@@ -1,393 +1,340 @@
-import React, { useEffect, useRef } from 'react';
+'use client';
+import { useEffect, useRef } from 'react';
 
-export default function RobotScene() {
-  const canvasRef = useRef(null);
-  const animRef = useRef(null);
+// Color map: verdict → laser hex
+const VERDICT_COLORS = {
+  malicious: 0xef4444,
+  suspicious: 0xf59e0b,
+  clean:      0x22c55e,
+  loading:    0x3b82f6,
+  default:    0xffffff,
+};
+
+export default function RobotScene({ mode = 'inspect', verdict = null }) {
+  const mountRef = useRef(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    let THREE, renderer, animId;
 
-    let THREE;
-    try {
-      THREE = require('three');
-    } catch (e) {
-      console.error('Three.js not available', e);
-      return;
-    }
+    async function init() {
+      THREE = await import('three');
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+      const W = mountRef.current.clientWidth;
+      const H = mountRef.current.clientHeight;
 
-    // ── Renderer ──────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+      // ── Renderer ────────────────────────────────────────────────────────────
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(W, H);
+      renderer.shadowMap.enabled = true;
+      mountRef.current.appendChild(renderer.domElement);
 
-    // ── Scene ─────────────────────────────────────────────────
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#0B1120');
-    scene.fog = new THREE.FogExp2('#0B1120', 0.06);
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b1120);
+      scene.fog = new THREE.FogExp2(0x0b1120, 0.06);
 
-    // ── Camera ────────────────────────────────────────────────
-    const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 200);
-    camera.position.set(0, 4, 14);
-    camera.lookAt(0, 1.5, 0);
+      // ── Camera ───────────────────────────────────────────────────────────────
+      const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 200);
+      // Robot faces RIGHT (toward card). Camera offset to show profile.
+      camera.position.set(-5, 3.5, 9);
+      camera.lookAt(0, 1.5, 0);
 
-    // ── Lights ────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0x0B1120, 0.6));
+      // ── Lights ───────────────────────────────────────────────────────────────
+      scene.add(new THREE.AmbientLight(0x0b1120, 0.7));
+      const keyLight = new THREE.DirectionalLight(0x3b82f6, 1.2);
+      keyLight.position.set(-4, 8, 4);
+      keyLight.castShadow = true;
+      scene.add(keyLight);
+      const fillLight = new THREE.PointLight(0x1e293b, 0.9, 30);
+      fillLight.position.set(4, 3, -3);
+      scene.add(fillLight);
 
-    const dirLight = new THREE.DirectionalLight(0x3B82F6, 0.9);
-    dirLight.position.set(-8, 10, 5);
-    dirLight.castShadow = true;
-    scene.add(dirLight);
-
-    const fillLight1 = new THREE.PointLight(0x3B82F6, 1.2, 30);
-    fillLight1.position.set(5, 3, 5);
-    scene.add(fillLight1);
-
-    const fillLight2 = new THREE.PointLight(0xF1F5F9, 0.5, 20);
-    fillLight2.position.set(-5, 5, -3);
-    scene.add(fillLight2);
-
-    // Antenna tip light — will track eye color
-    const antennaLight = new THREE.PointLight(0x3B82F6, 2.5, 8);
-    antennaLight.position.set(0, 5.5, 0);
-    scene.add(antennaLight);
-
-    // ── Materials ─────────────────────────────────────────────
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: '#0F172A',
-      metalness: 0.9,
-      roughness: 0.1,
-    });
-    const wireOverlay = new THREE.MeshBasicMaterial({
-      color: '#1E293B',
-      wireframe: true,
-      transparent: true,
-      opacity: 0.18,
-    });
-
-    // ── Robot group ───────────────────────────────────────────
-    const robot = new THREE.Group();
-    scene.add(robot);
-
-    // Torso
-    const torsoGeo = new THREE.BoxGeometry(1.4, 1.8, 0.9);
-    const torso = new THREE.Mesh(torsoGeo, bodyMat);
-    torso.castShadow = true;
-    robot.add(torso);
-    robot.add(new THREE.Mesh(torsoGeo, wireOverlay)); // panel lines
-
-    // Shoulder pads
-    [-0.85, 0.85].forEach(x => {
-      const sg = new THREE.BoxGeometry(0.4, 0.3, 0.85);
-      const sh = new THREE.Mesh(sg, bodyMat);
-      sh.position.set(x, 0.75, 0);
-      robot.add(sh);
-    });
-
-    // Head
-    const headGeo = new THREE.BoxGeometry(1.1, 0.95, 0.85);
-    const head = new THREE.Mesh(headGeo, bodyMat);
-    head.position.set(0, 1.45, 0);
-    head.castShadow = true;
-    robot.add(head);
-    const headWire = new THREE.Mesh(headGeo, wireOverlay);
-    headWire.position.copy(head.position);
-    robot.add(headWire);
-
-    // Eye slots — wide scanner slits
-    const eyeSlitGeo = new THREE.BoxGeometry(0.38, 0.07, 0.08);
-    const eyeMatL = new THREE.MeshStandardMaterial({ color: '#3B82F6', emissive: '#3B82F6', emissiveIntensity: 3.5 });
-    const eyeMatR = new THREE.MeshStandardMaterial({ color: '#3B82F6', emissive: '#3B82F6', emissiveIntensity: 3.5 });
-
-    const leftEye = new THREE.Mesh(eyeSlitGeo, eyeMatL);
-    leftEye.position.set(-0.22, 1.52, 0.44);
-    robot.add(leftEye);
-
-    const rightEye = new THREE.Mesh(eyeSlitGeo, eyeMatR);
-    rightEye.position.set(0.22, 1.52, 0.44);
-    robot.add(rightEye);
-
-    // Laser beams — wide flat planes from each eye
-    const beamGeo = new THREE.PlaneGeometry(9, 0.07);
-    const beamMatL = new THREE.MeshBasicMaterial({ color: '#3B82F6', transparent: true, opacity: 0.32, side: THREE.DoubleSide });
-    const beamMatR = new THREE.MeshBasicMaterial({ color: '#3B82F6', transparent: true, opacity: 0.32, side: THREE.DoubleSide });
-
-    const leftBeam = new THREE.Mesh(beamGeo, beamMatL);
-    leftBeam.position.set(-0.22 + 4.5, 1.52, 0.44); // extends forward (Z world = into screen; offset in local space)
-    leftBeam.rotation.y = Math.PI / 2; // face forward
-    robot.add(leftBeam);
-
-    const rightBeam = new THREE.Mesh(beamGeo, beamMatR);
-    rightBeam.position.set(0.22 + 4.5, 1.52, 0.44);
-    rightBeam.rotation.y = Math.PI / 2;
-    robot.add(rightBeam);
-
-    // ── Reposition beams as children of head for easier rotation ──
-    // Actually keep them as scene-level so we can sweep independently
-    // Move beams out of robot group so they extend in world Z
-    robot.remove(leftBeam);
-    robot.remove(rightBeam);
-    scene.add(leftBeam);
-    scene.add(rightBeam);
-
-    // Antenna
-    const antGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.7, 8);
-    const ant = new THREE.Mesh(antGeo, bodyMat);
-    ant.position.set(0, 2.25, 0);
-    robot.add(ant);
-
-    const antTipGeo = new THREE.SphereGeometry(0.09, 8, 8);
-    const antTipMat = new THREE.MeshStandardMaterial({ color: '#3B82F6', emissive: '#3B82F6', emissiveIntensity: 5 });
-    const antTip = new THREE.Mesh(antTipGeo, antTipMat);
-    antTip.position.set(0, 2.65, 0);
-    robot.add(antTip);
-
-    // Arms
-    const armGeo = new THREE.CylinderGeometry(0.18, 0.13, 1.3, 8);
-    const leftArm = new THREE.Mesh(armGeo, bodyMat);
-    leftArm.position.set(-0.95, -0.2, 0);
-    leftArm.rotation.z = 0.4;
-    robot.add(leftArm);
-
-    const rightArm = new THREE.Mesh(armGeo, bodyMat);
-    rightArm.position.set(0.95, -0.2, 0);
-    rightArm.rotation.z = -0.4;
-    robot.add(rightArm);
-
-    // Forearms
-    const foreGeo = new THREE.CylinderGeometry(0.12, 0.09, 0.9, 8);
-    const leftFore = new THREE.Mesh(foreGeo, bodyMat);
-    leftFore.position.set(-1.35, -0.78, 0);
-    leftFore.rotation.z = 0.15;
-    robot.add(leftFore);
-
-    const rightFore = new THREE.Mesh(foreGeo, bodyMat);
-    rightFore.position.set(1.35, -0.78, 0);
-    rightFore.rotation.z = -0.15;
-    robot.add(rightFore);
-
-    // Legs
-    const legGeo = new THREE.BoxGeometry(0.42, 1.2, 0.42);
-    const leftLeg = new THREE.Mesh(legGeo, bodyMat);
-    leftLeg.position.set(-0.38, -1.55, 0);
-    robot.add(leftLeg);
-    const rightLeg = new THREE.Mesh(legGeo, bodyMat);
-    rightLeg.position.set(0.38, -1.55, 0);
-    robot.add(rightLeg);
-
-    // Feet
-    const footGeo = new THREE.BoxGeometry(0.5, 0.22, 0.65);
-    const leftFoot = new THREE.Mesh(footGeo, bodyMat);
-    leftFoot.position.set(-0.38, -2.26, 0.1);
-    robot.add(leftFoot);
-    const rightFoot = new THREE.Mesh(footGeo, bodyMat);
-    rightFoot.position.set(0.38, -2.26, 0.1);
-    robot.add(rightFoot);
-
-    robot.position.set(-1, 0.5, 0);
-
-    // ── Ground grid ───────────────────────────────────────────
-    const grid = new THREE.GridHelper(80, 80, '#1E293B', '#1E293B');
-    grid.position.y = -2.8;
-    scene.add(grid);
-
-    // ── Orbiting scan target cubes ────────────────────────────
-    const orbitCubes = [];
-    const orbitWireMats = [];
-    for (let i = 0; i < 8; i++) {
-      const cg = new THREE.BoxGeometry(0.28, 0.28, 0.28);
-      const wm = new THREE.MeshBasicMaterial({ color: '#3B82F6', wireframe: true });
-      orbitWireMats.push(wm);
-      const cube = new THREE.Mesh(cg, wm);
-      const radius = 2.2 + Math.random() * 2.5;
-      const speed = 0.3 + Math.random() * 0.4;
-      const yOff = (Math.random() - 0.5) * 2;
-      const phase = Math.random() * Math.PI * 2;
-      orbitCubes.push({ mesh: cube, radius, speed, yOff, phase });
-      scene.add(cube);
-    }
-
-    // ── Particle field ────────────────────────────────────────
-    const PARTICLE_COUNT = 250;
-    const positions = new Float32Array(PARTICLE_COUNT * 3);
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 28;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 14;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 18;
-    }
-    const partGeo = new THREE.BufferGeometry();
-    partGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const partMat = new THREE.PointsMaterial({ color: '#3B82F6', size: 0.07, transparent: true, opacity: 0.6 });
-    const particles = new THREE.Points(partGeo, partMat);
-    scene.add(particles);
-
-    // ── Eye color state machine ────────────────────────────────
-    const COLORS = [
-      new THREE.Color('#3B82F6'), // blue idle
-      new THREE.Color('#22C55E'), // green clean
-      new THREE.Color('#F59E0B'), // amber suspicious
-      new THREE.Color('#EF4444'), // red threat
-    ];
-    let colorStateIdx = 0;
-    let nextColorIdx = 1;
-    let colorT = 0;
-    let stateTimer = 0;
-    const STATE_DURATION = 3.0; // seconds per state
-    const LERP_DURATION = 0.8;
-    let currentColor = COLORS[0].clone();
-
-    // ── Mouse interaction ──────────────────────────────────────
-    let mouseX = 0, mouseY = 0;
-    const onMouseMove = (e) => {
-      mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-      mouseY = -(e.clientY / window.innerHeight - 0.5) * 2;
-    };
-    window.addEventListener('mousemove', onMouseMove);
-
-    // Click flash
-    let flashTimer = 0;
-    const onClick = () => { flashTimer = 0.2; };
-    canvas.addEventListener('click', onClick);
-
-    // ── Resize ────────────────────────────────────────────────
-    const onResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    };
-    window.addEventListener('resize', onResize);
-
-    // ── Animation loop ────────────────────────────────────────
-    const clock = new THREE.Clock();
-
-    const animate = () => {
-      animRef.current = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const t = clock.getElapsedTime();
-
-      // ── Color state machine ──
-      stateTimer += delta;
-      colorT = Math.min(stateTimer / LERP_DURATION, 1);
-      currentColor.copy(COLORS[colorStateIdx]).lerp(COLORS[nextColorIdx], colorT);
-
-      if (stateTimer >= STATE_DURATION) {
-        stateTimer = 0;
-        colorStateIdx = nextColorIdx;
-        nextColorIdx = (nextColorIdx + 1) % COLORS.length;
-        colorT = 0;
-      }
-
-      // Flash override on click
-      let eyeColor = currentColor;
-      if (flashTimer > 0) {
-        flashTimer -= delta;
-        const flash = new THREE.Color('#FFFFFF');
-        eyeColor = flash;
-        [eyeMatL, eyeMatR].forEach(m => { m.emissive.copy(flash); m.emissiveIntensity = 8; });
-        [beamMatL, beamMatR].forEach(m => { m.color.copy(flash); });
-        antTipMat.emissive.copy(flash);
-        antennaLight.color.copy(flash);
-      } else {
-        [eyeMatL, eyeMatR].forEach(m => { m.emissive.copy(currentColor); m.emissiveIntensity = 3.5; });
-        [beamMatL, beamMatR].forEach(m => { m.color.copy(currentColor); });
-        antTipMat.emissive.copy(currentColor);
-        antTipMat.color.copy(currentColor);
-        antennaLight.color.copy(currentColor);
-      }
-
-      // ── Robot body motion ──
-      robot.position.y = 0.5 + Math.sin(t * 0.8) * 0.08;
-
-      // Head tracks mouse + sways
-      const targetHeadY = mouseX * 0.4 + Math.sin(t * 0.5) * 0.25;
-      head.rotation.y += (targetHeadY - head.rotation.y) * 0.04;
-      headWire.rotation.y = head.rotation.y;
-      headWire.position.y = head.position.y;
-
-      // Arms oscillate
-      leftArm.rotation.z = 0.4 + Math.sin(t * 1.2) * 0.15;
-      rightArm.rotation.z = -(0.4 + Math.sin(t * 1.2 + Math.PI) * 0.15);
-
-      // ── Eye beam sweep ──
-      // Beams are in world space — update their world position from robot+eye positions
-      const robotPos = robot.position;
-      const beamForwardOffset = 4.6;
-
-      leftBeam.position.set(
-        robotPos.x - 0.22,
-        robotPos.y + 1.52,
-        robotPos.z + 0.44 + beamForwardOffset
-      );
-      rightBeam.position.set(
-        robotPos.x + 0.22,
-        robotPos.y + 1.52,
-        robotPos.z + 0.44 + beamForwardOffset
-      );
-
-      const beamSweep = Math.sin(t * 1.6) * 0.35;
-      leftBeam.rotation.x = beamSweep;
-      rightBeam.rotation.x = beamSweep + 0.05;
-
-      // Antenna tip pulse
-      antTip.scale.setScalar(1 + Math.sin(t * 3) * 0.15);
-
-      // ── Camera slow orbit ──
-      camera.position.x = Math.sin(t * 0.08) * 4;
-      camera.position.z = 14 + Math.cos(t * 0.08) * 2;
-      camera.position.y = 4 + Math.sin(t * 0.15) * 0.5;
-      camera.lookAt(robot.position.x, robot.position.y + 1, 0);
-
-      // ── Orbiting cubes ──
-      orbitCubes.forEach(({ mesh, radius, speed, yOff, phase }, i) => {
-        const ang = t * speed + phase;
-        mesh.position.set(
-          robotPos.x + Math.cos(ang) * radius,
-          robotPos.y + yOff + Math.sin(t * 0.5 + i) * 0.3,
-          robotPos.z + Math.sin(ang) * radius
-        );
-        mesh.rotation.x += delta * 1.5;
-        mesh.rotation.y += delta * 1.0;
-        orbitWireMats[i].color.copy(currentColor);
+      // ── Materials ────────────────────────────────────────────────────────────
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x1e293b,
+        metalness: 0.85,
+        roughness: 0.15,
+      });
+      const darkMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        metalness: 0.9,
+        roughness: 0.1,
+      });
+      const panelMat = new THREE.MeshStandardMaterial({
+        color: 0x334155,
+        metalness: 0.6,
+        roughness: 0.3,
       });
 
-      // ── Particles drift upward ──
-      const pos = partGeo.attributes.position;
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
-        pos.array[i * 3 + 1] += delta * 0.25;
-        if (pos.array[i * 3 + 1] > 7) pos.array[i * 3 + 1] = -7;
+      // Determine laser color
+      const laserHex =
+        mode === 'inspect'
+          ? VERDICT_COLORS.default           // white for inspect
+          : VERDICT_COLORS[verdict] ?? VERDICT_COLORS.loading;
+
+      const eyeMat = new THREE.MeshStandardMaterial({
+        color: laserHex,
+        emissive: new THREE.Color(laserHex),
+        emissiveIntensity: 4,
+      });
+      const beamMat = new THREE.MeshBasicMaterial({
+        color: laserHex,
+        transparent: true,
+        opacity: 0.18,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+
+      // ── Robot root ───────────────────────────────────────────────────────────
+      const robot = new THREE.Group();
+      scene.add(robot);
+
+      // Helper
+      const box = (w, h, d, mat, x = 0, y = 0, z = 0) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        return m;
+      };
+      const cyl = (rt, rb, h, seg, mat, x = 0, y = 0, z = 0) => {
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), mat);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        return m;
+      };
+
+      // ── LEGS (bottom of robot, wide stance matching reference silhouette) ────
+      const legL = box(0.5, 1.4, 0.5, bodyMat, -0.45, 0.7, 0);
+      const legR = box(0.5, 1.4, 0.5, bodyMat,  0.45, 0.7, 0);
+      const footL = box(0.65, 0.22, 0.75, darkMat, -0.45, 0.07, 0.08);
+      const footR = box(0.65, 0.22, 0.75, darkMat,  0.45, 0.07, 0.08);
+      robot.add(legL, legR, footL, footR);
+
+      // ── TORSO ────────────────────────────────────────────────────────────────
+      const torso = box(1.5, 1.6, 0.8, bodyMat, 0, 2.3, 0);
+      // Chest panel
+      const chestPanel = box(0.9, 0.7, 0.12, panelMat, 0, 2.35, 0.41);
+      // Vent lines on chest
+      for (let i = 0; i < 3; i++) {
+        const vent = box(0.75, 0.055, 0.14, darkMat, 0, 2.55 - i * 0.22, 0.41);
+        robot.add(vent);
       }
-      pos.needsUpdate = true;
+      // Shoulder connectors (matching wide upper silhouette from reference)
+      const shoulderL = cyl(0.22, 0.26, 0.22, 8, panelMat, -0.86, 2.9, 0);
+      const shoulderR = cyl(0.22, 0.26, 0.22, 8, panelMat,  0.86, 2.9, 0);
+      shoulderL.rotation.z = Math.PI / 2;
+      shoulderR.rotation.z = Math.PI / 2;
+      robot.add(torso, chestPanel, shoulderL, shoulderR);
 
-      renderer.render(scene, camera);
-    };
+      // ── ARMS ─────────────────────────────────────────────────────────────────
+      const armL = new THREE.Group();
+      armL.position.set(-1.0, 2.75, 0);
+      armL.add(box(0.38, 1.1, 0.38, bodyMat, 0, -0.55, 0)); // upper arm
+      armL.add(cyl(0.15, 0.15, 0.18, 8, darkMat, 0, -1.15, 0)); // elbow
+      armL.add(box(0.32, 0.85, 0.32, bodyMat, 0, -1.7, 0)); // lower arm
+      armL.add(box(0.42, 0.22, 0.38, darkMat, 0, -2.2, 0.04)); // hand
+      robot.add(armL);
 
-    animate();
+      const armR = new THREE.Group();
+      armR.position.set(1.0, 2.75, 0);
+      armR.add(box(0.38, 1.1, 0.38, bodyMat, 0, -0.55, 0));
+      armR.add(cyl(0.15, 0.15, 0.18, 8, darkMat, 0, -1.15, 0));
+      armR.add(box(0.32, 0.85, 0.32, bodyMat, 0, -1.7, 0));
+      armR.add(box(0.42, 0.22, 0.38, darkMat, 0, -2.2, 0.04));
+      robot.add(armR);
 
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('resize', onResize);
-      canvas.removeEventListener('click', onClick);
-      renderer.dispose();
-    };
-  }, []);
+      // ── NECK ─────────────────────────────────────────────────────────────────
+      const neck = cyl(0.2, 0.25, 0.32, 8, darkMat, 0, 3.24, 0);
+      robot.add(neck);
+
+      // ── HEAD (wider at middle — matches reference upper silhouette) ───────────
+      const head = new THREE.Group();
+      head.position.set(0, 3.8, 0);
+      robot.add(head);
+
+      head.add(box(1.15, 0.95, 0.85, bodyMat));           // main head block
+      head.add(box(1.05, 0.18, 0.9, darkMat, 0, -0.38, 0)); // jaw ledge
+      head.add(box(0.82, 0.12, 0.88, panelMat, 0, 0.3, 0)); // forehead panel
+
+      // ── EAR SENSORS ──────────────────────────────────────────────────────────
+      head.add(box(0.12, 0.55, 0.3, panelMat, -0.64, 0.05, 0));
+      head.add(box(0.12, 0.55, 0.3, panelMat,  0.64, 0.05, 0));
+
+      // ── ANTENNA ──────────────────────────────────────────────────────────────
+      const antenna = cyl(0.035, 0.05, 0.5, 6, panelMat, 0, 0.72, 0);
+      const antennaTip = new THREE.Mesh(
+        new THREE.SphereGeometry(0.07, 8, 8),
+        eyeMat.clone()
+      );
+      antennaTip.position.y = 0.3;
+      antenna.add(antennaTip);
+      head.add(antenna);
+
+      // ── EYES (wide horizontal scanner slits, matching reference bright spots) ─
+      // Reference: bright spots at x≈1035, y≈90-266 → upper face, two slits
+      const eyeGeoW = new THREE.BoxGeometry(0.42, 0.09, 0.1);
+      const eyeL = new THREE.Mesh(eyeGeoW, eyeMat);
+      const eyeR = new THREE.Mesh(eyeGeoW, eyeMat);
+      eyeL.position.set(-0.24, 0.05, 0.44);
+      eyeR.position.set( 0.24, 0.05, 0.44);
+
+      // Glow halo behind each eye (PointLight baked into mesh glow)
+      const eyeGlowGeo = new THREE.BoxGeometry(0.52, 0.16, 0.06);
+      const eyeGlowMat = new THREE.MeshBasicMaterial({
+        color: laserHex,
+        transparent: true,
+        opacity: 0.22,
+      });
+      const glowL = new THREE.Mesh(eyeGlowGeo, eyeGlowMat);
+      const glowR = new THREE.Mesh(eyeGlowGeo, eyeGlowMat);
+      glowL.position.set(-0.24, 0.05, 0.42);
+      glowR.position.set( 0.24, 0.05, 0.42);
+      head.add(eyeL, eyeR, glowL, glowR);
+
+      // ── LASER BEAMS from eyes ─────────────────────────────────────────────────
+      // Wide flat plane extending forward from each eye
+      const beamGeo = new THREE.PlaneGeometry(7, 0.09);
+      const beamL = new THREE.Mesh(beamGeo, beamMat);
+      const beamR = new THREE.Mesh(beamGeo, beamMat.clone());
+
+      // Pivot from eye position, extend forward (positive Z in head-local space)
+      // PlaneGeometry faces up by default → rotate to face forward, then offset
+      beamL.rotation.y = Math.PI / 2;
+      beamR.rotation.y = Math.PI / 2;
+      beamL.position.set(-0.24 + 3.5, 0.05, 0.44); // center 3.5 units forward
+      beamR.position.set( 0.24 + 3.5, 0.05, 0.44);
+      beamL.rotation.y = 0; // keep plane vertical, extending along Z
+      beamR.rotation.y = 0;
+
+      // Actually: build beam groups so we can rotate them from eye pivot
+      const beamGroupL = new THREE.Group();
+      beamGroupL.position.set(-0.24, 0.05, 0.44);
+      const bL = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.09), beamMat);
+      bL.position.set(0, 0, 4);
+      beamGroupL.add(bL);
+
+      const beamGroupR = new THREE.Group();
+      beamGroupR.position.set(0.24, 0.05, 0.44);
+      const bR = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.09), beamMat.clone());
+      bR.position.set(0, 0, 4);
+      beamGroupR.add(bR);
+
+      head.add(beamGroupL, beamGroupR);
+
+      // Eye point lights (give environment colour cast)
+      const eyeLightL = new THREE.PointLight(laserHex, 2.5, 6);
+      eyeLightL.position.set(-0.24, 0.05, 1.2);
+      const eyeLightR = new THREE.PointLight(laserHex, 2.5, 6);
+      eyeLightR.position.set( 0.24, 0.05, 1.2);
+      head.add(eyeLightL, eyeLightR);
+
+      // ── GROUND GRID ──────────────────────────────────────────────────────────
+      const grid = new THREE.GridHelper(60, 60, 0x1e293b, 0x0f172a);
+      grid.position.y = 0;
+      scene.add(grid);
+
+      // ── FLOATING PARTICLES ───────────────────────────────────────────────────
+      const pCount = 200;
+      const pGeo = new THREE.BufferGeometry();
+      const pPos = new Float32Array(pCount * 3);
+      for (let i = 0; i < pCount * 3; i++) pPos[i] = (Math.random() - 0.5) * 30;
+      pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+      const particles = new THREE.Points(
+        pGeo,
+        new THREE.PointsMaterial({ color: 0x3b82f6, size: 0.06, transparent: true, opacity: 0.6 })
+      );
+      scene.add(particles);
+
+      // Robot faces card (card is on left of viewport, robot on right)
+      // Rotate robot so it faces left (negative X → card side)
+      robot.rotation.y = -Math.PI * 0.18;
+      robot.position.set(1.2, 0, 0);
+
+      // ── RESIZE HANDLER ───────────────────────────────────────────────────────
+      const onResize = () => {
+        if (!mountRef.current) return;
+        const w = mountRef.current.clientWidth;
+        const h = mountRef.current.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      };
+      window.addEventListener('resize', onResize);
+
+      // ── ANIMATION ────────────────────────────────────────────────────────────
+      let t = 0;
+      const animate = () => {
+        animId = requestAnimationFrame(animate);
+        t += 0.016;
+
+        // Robot bob
+        robot.position.y = Math.sin(t * 0.7) * 0.07;
+
+        // Arm swing
+        armL.rotation.z =  0.22 + Math.sin(t * 0.9) * 0.12;
+        armR.rotation.z = -0.22 - Math.sin(t * 0.9) * 0.12;
+
+        // Head slight tilt
+        head.rotation.y = Math.sin(t * 0.4) * 0.08;
+        head.rotation.x = Math.sin(t * 0.3) * 0.04;
+
+        // Laser beam sweep (vertical scan)
+        const sweep = Math.sin(t * 1.8) * 0.28;
+        beamGroupL.rotation.x = sweep;
+        beamGroupR.rotation.x = sweep;
+
+        // Antenna tip pulse
+        antennaTip.material.emissiveIntensity = 2.5 + Math.sin(t * 3) * 1.5;
+
+        // Eye intensity breathe
+        const breathe = 3.5 + Math.sin(t * 2.2) * 0.8;
+        eyeMat.emissiveIntensity = breathe;
+        eyeGlowMat.opacity = 0.15 + Math.sin(t * 2.2) * 0.08;
+        eyeLightL.intensity = 2 + Math.sin(t * 2.2) * 0.8;
+        eyeLightR.intensity = 2 + Math.sin(t * 2.2) * 0.8;
+
+        // Particle drift
+        const pos = particles.geometry.attributes.position;
+        for (let i = 0; i < pCount; i++) {
+          pos.array[i * 3 + 1] += 0.012;
+          if (pos.array[i * 3 + 1] > 12) pos.array[i * 3 + 1] = -6;
+        }
+        pos.needsUpdate = true;
+
+        // Slow camera drift
+        camera.position.x = -5 + Math.sin(t * 0.12) * 0.6;
+        camera.position.y = 3.5 + Math.sin(t * 0.09) * 0.2;
+        camera.lookAt(0, 2, 0);
+
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      // ── CLEANUP ───────────────────────────────────────────────────────────────
+      return () => {
+        window.removeEventListener('resize', onResize);
+        cancelAnimationFrame(animId);
+        renderer.dispose();
+        if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
+          mountRef.current.removeChild(renderer.domElement);
+        }
+      };
+    }
+
+    const cleanup = init();
+    return () => { cleanup.then(fn => fn && fn()); };
+  }, [mode, verdict]);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
+      ref={mountRef}
       style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
+        position: 'absolute',
+        top: 0, left: 0,
+        width: '100%',
+        height: '100%',
         zIndex: 0,
-        display: 'block',
+        pointerEvents: 'none',
       }}
     />
   );
