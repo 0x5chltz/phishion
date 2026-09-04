@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router';
 import React from "react";
 // @material-ui/core components
@@ -10,12 +10,10 @@ import LinearProgress from "@material-ui/core/LinearProgress";
 import Search from "@material-ui/icons/Search";
 
 // core components
-import { List } from '@material-ui/core';
 import GridContainer from "/components/Grid/GridContainer.js";
 import GridItem from "/components/Grid/GridItem.js";
 import Button from "/components/CustomButtons/Button.js";
 import Badge from "/components/Badge/Badge.js";
-import InfoArea from "/components/InfoArea/InfoArea.js";
 import Card from "/components/Card/Card.js";
 import CardBody from "/components/Card/CardBody.js";
 import CardHeader from "/components/Card/CardHeader.js";
@@ -23,60 +21,147 @@ import CardFooter from "/components/Card/CardFooter.js";
 import Typography from "@material-ui/core/Typography";
 import Divider from "@material-ui/core/Divider";
 
+import { api } from "/lib/api.js";
+
 import styles from "/styles/jss/nextjs-material-kit/pages/inspectPage.js";
 
 const useStyles = makeStyles(styles);
+
+const POLL_INTERVAL_MS = 3000;
+const MAX_POLL_ATTEMPTS = 20;
+const PENDING_STATUSES = ["queued", "running"];
+
+// The backend verdict vocabulary is exactly: malicious / suspicious / clean.
+const BADGE_COLOR_BY_VERDICT = {
+  malicious: "danger",
+  suspicious: "warning",
+  clean: "success",
+};
+
+function verdictOf(scan) {
+  if (!scan) return null;
+  if (scan.verdict) return scan.verdict;
+  if (scan.malicious > 0) return "malicious";
+  if (scan.suspicious > 0) return "suspicious";
+  if (scan.status === "completed") return "clean";
+  return null;
+}
+
+// Read the scan id that the inspect page stored, as a fallback for the query param.
+function scanIdFromStorage() {
+  try {
+    const saved = localStorage.getItem("scanResult");
+    if (!saved) return { id: null, remaining: null };
+    const parsed = JSON.parse(saved);
+    return {
+      id: parsed?.scan?.id ?? null,
+      remaining: parsed?.remaining ?? null,
+    };
+  } catch (e) {
+    return { id: null, remaining: null, error: "Failed to load data from local storage" };
+  }
+}
 
 export default function ResultSection() {
   const classes = useStyles();
   const router = useRouter();
 
-  // environtment variable
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-  const backendname = process.env.NEXT_PUBLIC_BACKEND_NAME || 'api';
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [scan, setScan] = useState(null);
+  const [error, setError] = useState(null);
+  const [warning, setWarning] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
   const [remaining, setRemaining] = useState(null);
 
+  const attemptsRef = useRef(0);
+
   useEffect(() => {
-  const saved = localStorage.getItem("scanResult");
-  if (!saved) {
-    setResult({ error: "Tidak ada data hasil scan" });
-    return;
-  }
+    if (!router.isReady) return;
 
-  try {
-    const parsed = JSON.parse(saved);
-    const url_id = parsed?.url_id || parsed?.id;
+    let cancelled = false;
+    let intervalId = null;
 
-    if (!url_id) {
-      setResult({ error: "ID hasil scan tidak ditemukan" });
-      return;
+    const stopPolling = () => {
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const stored = scanIdFromStorage();
+    if (stored.remaining !== null && stored.remaining !== undefined) {
+      setRemaining(stored.remaining);
     }
 
-    setLoading(true);
+    const queryId = router.query?.id;
+    const rawId = Array.isArray(queryId) ? queryId[0] : queryId;
+    const scanId = rawId != null && rawId !== "" ? rawId : stored.id;
 
-    fetch(`${apiUrl}/${backendname}/scan/${url_id}`, {
-      credentials: "include",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
-          setResult({ error: data.error });
-        } else {
-          setResult(data);
-          setRemaining(data.remaining ?? "Tidak diketahui");
+    if (scanId == null) {
+      setLoading(false);
+      setError(stored.error || "No scan result data available");
+      return () => {
+        cancelled = true;
+        stopPolling();
+      };
+    }
+
+    const fetchOnce = async () => {
+      try {
+        attemptsRef.current += 1;
+        const data = await api.scanDetail(scanId);
+        if (cancelled) return;
+
+        setWarning(data?.warning || null);
+
+        const nextScan = data?.scan || null;
+        setScan(nextScan);
+
+        const status = nextScan?.status;
+        if (!PENDING_STATUSES.includes(status)) {
+          // completed, failed, or anything terminal: stop polling.
+          setLoading(false);
+          stopPolling();
+          return;
         }
-      })
-      .catch(() => {
-        setResult({ error: "Gagal mengambil hasil scan dari server" });
-      })
-      .finally(() => setLoading(false));
-  } catch (e) {
-    setResult({ error: "Gagal memuat data dari localStorage" });
-  }
-}, []);
 
+        if (attemptsRef.current >= MAX_POLL_ATTEMPTS) {
+          setLoading(false);
+          setTimedOut(true);
+          stopPolling();
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setLoading(false);
+        stopPolling();
+        setError(
+          err?.status === 404
+            ? "Scan result not found"
+            : err?.data?.error || err?.message || "Failed to fetch the scan result from the server"
+        );
+      }
+    };
+
+    fetchOnce();
+    intervalId = setInterval(fetchOnce, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      stopPolling();
+    };
+  }, [router.isReady, router.query?.id]);
+
+  const attributes = scan?.result?.data?.attributes || null;
+  const stats = attributes?.last_analysis_stats || null;
+  const verdict = verdictOf(scan);
+  const maliciousCount = stats?.malicious ?? scan?.malicious ?? 0;
+
+  const engineDetections = Object.entries(attributes?.last_analysis_results || {})
+    .filter(([, v]) => v?.category === "malicious" || v?.category === "suspicious");
+
+  const statusLabel = verdict
+    ? verdict.charAt(0).toUpperCase() + verdict.slice(1)
+    : "Unknown";
 
   if (loading) {
     return (
@@ -90,7 +175,16 @@ export default function ResultSection() {
               <CardBody>
                 <Divider style={{ marginBottom: 12 }} />
                 <LinearProgress style={{ marginBottom: 16 }} />
-                <Typography>Loading scan result...</Typography>
+                <Typography>
+                  {scan?.status === "running"
+                    ? "Analysis in progress, this can take a moment..."
+                    : "Loading scan result..."}
+                </Typography>
+                {warning ? (
+                  <Typography color="textSecondary" style={{ marginTop: 12 }}>
+                    {warning}
+                  </Typography>
+                ) : null}
               </CardBody>
             </Card>
           </GridItem>
@@ -99,76 +193,90 @@ export default function ResultSection() {
     );
   }
 
-  if (!result) return null;
-
   return (
     <div className={classes.container}>
       <GridContainer justify="flex-start">
         <GridItem xs={12} sm={6} md={4}>
           <Card>
-            <CardHeader  className={classes.cardHeader}>
+            <CardHeader className={classes.cardHeader}>
               <h4>Results</h4>
             </CardHeader>
             <CardBody>
               <Divider style={{ marginBottom: 12}} />
-              {loading && <LinearProgress style={{ marginBottom: 16 }} />}
-              {result.error ? (
+              {warning ? (
+                <Typography color="textSecondary" style={{ marginBottom: 16 }}>
+                  {warning}
+                </Typography>
+              ) : null}
+              {error ? (
                 <Typography color="error">
-                  {typeof result.error === "object"
-                    ? result.error.message || JSON.stringify(result.error)
-                    : result.error}
+                  {typeof error === "object"
+                    ? error.message || JSON.stringify(error)
+                    : error}
+                </Typography>
+              ) : timedOut ? (
+                <Typography color="error">
+                  The scan is still being processed and did not finish in time. Reload this
+                  page in a moment to check again.
                 </Typography>
               ) : (
                 <>
                   <Typography style={{ marginBottom: 16 }}>
-                    <strong>URL:</strong> {result.scan_result.data?.attributes?.url || "-"}
+                    <strong>URL:</strong> {attributes?.url || scan?.url || "-"}
                   </Typography>
                   <Typography style={{ marginBottom: 16 }}>
-                    <strong>Status:</strong>{" "}
-                    {result.scan_result.data?.attributes?.last_analysis_stats?.malicious > 0
-                      ? "Malicious"
-                      : result.scan_result.data?.attributes?.last_analysis_stats?.suspicious > 0
-                        ? "Suspicious"
-                        : "Clean"}
+                    <strong>Status:</strong> {statusLabel}
                   </Typography>
                   <Typography style={{ marginBottom: 16 }}>
-                    <strong>Malicious:</strong>{" "}
-                    {result.scan_result.data?.attributes?.last_analysis_stats?.malicious > 0
-                      ? <Badge color='warning'>YES ({result.scan_result.data.attributes.last_analysis_stats.malicious})</Badge>
-                      : <Badge color='success'>NO</Badge>}
+                    <strong>Verdict:</strong>{" "}
+                    {verdict ? (
+                      <Badge color={BADGE_COLOR_BY_VERDICT[verdict] || "gray"}>
+                        {verdict === "malicious"
+                          ? `MALICIOUS (${maliciousCount})`
+                          : verdict.toUpperCase()}
+                      </Badge>
+                    ) : (
+                      <Badge color="gray">UNKNOWN</Badge>
+                    )}
                   </Typography>
-                  <Typography style={{ marginBottom: 16 }}>
+                  <Typography style={{ marginBottom: 16 }} component="div">
                     <strong>Detail Engine:</strong>
-                    <ul>
-                      {Object.entries(result.scan_result.data?.attributes?.last_analysis_results || {})
-                        .filter(([_, v]) => v.category === "malicious" || v.category === "suspicious")
-                        .map(([engine, v]) => (
+                    {engineDetections.length ? (
+                      <ul>
+                        {engineDetections.map(([engine, v]) => (
                           <li key={engine}>
-                            {engine}: {v.result}
+                            {engine}: {v?.result || v?.category}
                           </li>
                         ))}
-                    </ul>
+                      </ul>
+                    ) : (
+                      <div>No engine flagged this URL.</div>
+                    )}
+                  </Typography>
+                  <Typography style={{ marginBottom: 16 }} component="div">
+                    <strong>Messages:</strong>
+                    <br />
+                    {attributes?.html_meta?.description || " "}
+                    <br />
+                    {attributes?.reputation !== undefined && attributes?.reputation !== null
+                      ? `The URL reputation is ${attributes.reputation}.`
+                      : "The URL reputation is not available."}
+                    <br />
+                    {"The URL potentionally "}
+                    {attributes?.categories?.Webroot ||
+                      attributes?.categories?.Sophos ||
+                      attributes?.categories?.BitDefender ||
+                      attributes?.categories?.Kaspersky ||
+                      "Not found"}.
+                    <br />
+                    {attributes?.html_meta?.generator
+                      ? `The generator is ${attributes.html_meta.generator}`
+                      : ""}
+                    <br />
                   </Typography>
                   <Typography style={{ marginBottom: 16 }}>
-                    <strong>Messages:</strong>{" "}
-                    <br></br>
-                    {result.scan_result.data?.attributes?.html_meta?.description || " "}
-                    <br></br>
-                    {" The URL reputation is " + result.scan_result.data?.attributes?.reputation || ""}.
-                    <br></br>
-                    The URL potentionally{" "}
-                    {result.scan_result.data?.attributes?.categories?.Webroot ||
-                      result.scan_result.data?.attributes?.categories?.Sophos ||
-                      result.scan_result.data?.attributes?.categories?.BitDefender ||
-                      result.scan_result.data?.attributes?.categories?.Kaspersky ||
-                      "Not found"}.
-                    <br></br>
-                    {" The generator is " + result.scan_result.data?.attributes?.html_meta?.generator || ""}
-                    <br></br>
-                    </Typography>
-                    <Typography style={{ marginBottom: 16 }}>
                     <strong>Scans Remaining:</strong>{" "}
-                    {remaining !== null ? remaining : "-"} scans left.
+                    {remaining !== null && remaining !== undefined ? remaining : "Unknown"} scans left.
                   </Typography>
                 </>
               )}
