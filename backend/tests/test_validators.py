@@ -1,6 +1,6 @@
 import unittest
 
-from backend.validators import is_valid_hostname, is_valid_scan_url
+from phishion.validators import is_valid_hostname, is_valid_scan_url
 
 
 class HostnameValidationTests(unittest.TestCase):
