@@ -167,12 +167,23 @@ export default function ResultSection({ onVerdictChange }) {
     ? verdict.charAt(0).toUpperCase() + verdict.slice(1)
     : "Unknown";
 
+  // Published on the card so the scene can colour its beams from the DOM,
+  // which also covers a first paint that happens before onVerdictChange runs.
+  const LASER_STATUS_BY_VERDICT = {
+    malicious: "danger",
+    suspicious: "suspicious",
+    clean: "safe",
+  };
+  const laserStatus = error
+    ? "error"
+    : LASER_STATUS_BY_VERDICT[verdict] || "idle";
+
   if (loading) {
     return (
       <div className={classes.container}>
         <GridContainer justify="flex-start">
           <GridItem xs={12} sm={6} md={4}>
-            <Card>
+            <Card className="laser-card" data-laser-status="scanning">
               <CardHeader color="primary" className={classes.cardHeader}>
                 <h4>Results</h4>
               </CardHeader>
@@ -201,7 +212,7 @@ export default function ResultSection({ onVerdictChange }) {
     <div className={classes.container}>
       <GridContainer justify="flex-start">
         <GridItem xs={12} sm={6} md={4}>
-          <Card>
+          <Card className="laser-card" data-laser-status={laserStatus}>
             <CardHeader className={classes.cardHeader}>
               <h4>Results</h4>
             </CardHeader>

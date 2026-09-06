@@ -1,17 +1,23 @@
 import React from "react";
+import dynamic from "next/dynamic";
 // core components
 import Header from "/components/Header/Header.js";
 import HeaderLinks from "/components/Header/HeaderLinks.js";
 import Footer from "/components/Footer/Footer.js";
-import Parallax from "/components/Parallax/ParallaxInspect.js";
 import Seo from "/components/Seo/Seo.js";
+
+// WebGL only, and it measures the card from the DOM, so never server render it.
+const RobotScene = dynamic(
+  () => import("/components/RobotScene/RobotScene.js"),
+  { ssr: false }
+);
 
 // sections for this page
 import DomainSection from "/pages-sections/DomainPage-Sections/DomainSection.js";
 
-// The parallax hero is a fixed-height, overflow-hidden signature layout, so the
-// page h1 is exposed to assistive tech and crawlers without being painted over
-// the artwork. The visible heading for the lookup lives in DomainSection.
+// The scene is a fixed-height, overflow-hidden signature layout, so the page h1
+// is exposed to assistive tech and crawlers without being painted over the
+// artwork. The visible heading for the lookup lives in DomainSection.
 const srOnly = {
   position: "absolute",
   width: 1,
@@ -45,10 +51,29 @@ export default function Domains(props) {
         }}
         {...rest}
       />
-      <Parallax image="/img/background_inspect2.png">
-        <h1 style={srOnly}>Subdomain Discovery</h1>
-        <DomainSection />
-      </Parallax>
+      <h1 style={srOnly}>Subdomain Discovery</h1>
+
+      <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#0B1120" }}>
+        <RobotScene mode="inspect" verdict={null} />
+
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            pointerEvents: "none",
+            zIndex: 10,
+          }}
+        >
+          <div style={{ pointerEvents: "all", width: "100%" }}>
+            <DomainSection />
+          </div>
+        </div>
+      </div>
       <Footer />
     </div>
   );

@@ -95,7 +95,10 @@ export default function InspectSection() {
     <div className={classes.container}>
       <GridContainer justify="flex-start">
         <GridItem xs={12} sm={6} md={4}>
-          <Card className={classes[cardAnimaton]}>
+          <Card
+            className={[classes[cardAnimaton], "laser-card"].filter(Boolean).join(" ")}
+            data-laser-status={loading ? "scanning" : "idle"}
+          >
             <form onSubmit={handleScan} className={classes.form}>
               <CardHeader className={classes.cardHeader}>
                 <h1 className={classes.cardTitle}>Inspect a URL</h1>

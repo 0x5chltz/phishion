@@ -58,7 +58,18 @@ export default function DomainSection() {
     <div className={classes.container}>
       <GridContainer justify="flex-start">
         <GridItem xs={12} sm={8} md={6}>
-          <Card>
+          <Card
+            className="laser-card"
+            data-laser-status={
+              loading
+                ? "scanning"
+                : error
+                ? "error"
+                : searchedDomain && subdomains.length > 0
+                ? "safe"
+                : "idle"
+            }
+          >
             <form onSubmit={handleLookup} className={classes.form}>
               <CardHeader className={classes.cardHeader}>
                 <h4>Subdomain Discovery</h4>

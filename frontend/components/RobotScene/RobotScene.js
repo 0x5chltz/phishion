@@ -10,7 +10,20 @@ const VERDICT_COLORS = {
   default: 0xffffff,
 };
 
-function laserHexFor(mode, verdict) {
+// A card can publish its own state through data-laser-status, so a page does
+// not have to thread a verdict prop down into the scene. Pages that do pass a
+// verdict keep working: the attribute simply wins wherever it is present.
+const STATUS_COLORS = {
+  idle: 0xffffff,
+  scanning: 0x3b82f6,
+  safe: 0x22c55e,
+  suspicious: 0xf59e0b,
+  danger: 0xef4444,
+  error: 0xf97316,
+};
+
+function laserHexFor(mode, verdict, status) {
+  if (status && status in STATUS_COLORS) return STATUS_COLORS[status];
   if (mode === 'inspect') return VERDICT_COLORS.default;
   return VERDICT_COLORS[verdict] ?? VERDICT_COLORS.loading;
 }
@@ -21,6 +34,11 @@ const FALLBACK_TARGET = { x: -0.45, top: 0.34, bottom: -0.34 };
 
 export default function RobotScene({ mode = 'inspect', verdict = null }) {
   const mountRef = useRef(null);
+  // Latest props, so the animation loop can recolour without being rebuilt.
+  const modeRef = useRef(mode);
+  const verdictRef = useRef(verdict);
+  // Status read off the targeted card, refreshed with every measurement.
+  const statusRef = useRef(null);
   // Holds everything the colour effect needs to reach without rebuilding the
   // scene, so changing verdict does not tear down and re-create the canvas.
   const sceneRef = useRef(null);
@@ -248,12 +266,23 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
       const measureCard = () => {
         const host = mount.parentElement;
         if (!host) return;
-        const candidates = host.querySelectorAll('form, [class*="card"], [class*="Card"]');
+        // A card opts into being the target by carrying the laser-card class,
+        // which is exact and also carries the status the beam colours from.
+        // Without it, fall back to guessing at the tallest card-like box.
+        const marked = host.querySelector('.laser-card');
+        statusRef.current = marked ? marked.getAttribute('data-laser-status') : null;
         let best = null;
-        for (const el of candidates) {
-          const r = el.getBoundingClientRect();
-          if (r.width < 80 || r.height < 60) continue;
-          if (!best || r.height > best.height) best = r;
+        if (marked) {
+          const r = marked.getBoundingClientRect();
+          if (r.width >= 80 && r.height >= 60) best = r;
+        }
+        if (!best) {
+          const candidates = host.querySelectorAll('form, [class*="card"], [class*="Card"]');
+          for (const el of candidates) {
+            const r = el.getBoundingClientRect();
+            if (r.width < 80 || r.height < 60) continue;
+            if (!best || r.height > best.height) best = r;
+          }
         }
         const hostRect = host.getBoundingClientRect();
         if (!best || !hostRect.width || !hostRect.height) {
@@ -288,11 +317,25 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
       const aim = new THREE.Vector3();
       const up = new THREE.Vector3(0, 1, 0);
 
-      sceneRef.current = {
-        THREE,
-        materials: [eyeMat, tipMat, haloMat, coreMat, hitMat],
-        lights: [eyeLight],
+      const materials = [eyeMat, tipMat, haloMat, coreMat, hitMat];
+      const lights = [eyeLight];
+      let appliedHex = null;
+
+      // Recolours in place, and only on a real change. Called both from the
+      // animation loop, for a card that publishes its own status, and from the
+      // prop effect below, so neither path rebuilds the canvas mid-scan.
+      const applyHex = (hex) => {
+        if (hex === appliedHex) return;
+        appliedHex = hex;
+        const color = new THREE.Color(hex);
+        for (const m of materials) {
+          if (m.color) m.color.set(color);
+          if (m.emissive) m.emissive.set(color);
+        }
+        for (const l of lights) l.color.set(color);
       };
+
+      sceneRef.current = { THREE, materials, lights, applyHex };
 
       let t = 0;
       let frame = 0;
@@ -305,7 +348,10 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
 
         // The card can change height as results load, so re-measure now and
         // then rather than only on resize.
-        if (frame % 45 === 0) measureCard();
+        if (frame % 45 === 0) {
+          measureCard();
+          applyHex(laserHexFor(modeRef.current, verdictRef.current, statusRef.current));
+        }
 
         robot.position.y = Math.sin(t * 0.7) * 0.07;
 
@@ -391,15 +437,11 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
   }, []);
 
   useEffect(() => {
+    modeRef.current = mode;
+    verdictRef.current = verdict;
     const s = sceneRef.current;
     if (!s) return;
-    const hex = laserHexFor(mode, verdict);
-    const color = new s.THREE.Color(hex);
-    for (const m of s.materials) {
-      if (m.color) m.color.set(color);
-      if (m.emissive) m.emissive.set(color);
-    }
-    for (const l of s.lights) l.color.set(color);
+    s.applyHex(laserHexFor(mode, verdict, statusRef.current));
   }, [mode, verdict]);
 
   return (
