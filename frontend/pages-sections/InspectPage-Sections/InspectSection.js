@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { makeStyles } from "@material-ui/core/styles";
 import InputAdornment from "@material-ui/core/InputAdornment";
 import IconButton from "@material-ui/core/IconButton";
-import { Email, Link as LinkIcon, Search } from "@material-ui/icons";
+import { Link as LinkIcon, Search } from "@material-ui/icons";
 
 import GridContainer from "/components/Grid/GridContainer.js";
 import GridItem from "/components/Grid/GridItem.js";
@@ -131,20 +131,6 @@ export default function InspectSection() {
                   }}
                 />
 
-                <CustomInput
-                  labelText="Email Content (PRO Version)"
-                  id="email"
-                  formControlProps={{ fullWidth: true }}
-                  inputProps={{
-                    type: "email",
-                    disabled: true,
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Email className={classes.inputIconsColor} />
-                      </InputAdornment>
-                    )
-                  }}
-                />
                 <div style={{ width: '100%', marginBottom: 8 }}>
                     <p className="text-gray-700 text-sm">
                       <span className="font-mono font-bold">Daily scan limit is (5 per day)</span>

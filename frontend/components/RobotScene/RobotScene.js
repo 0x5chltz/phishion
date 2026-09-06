@@ -19,6 +19,9 @@ const EYES = [
 const BG_SCALE = 1.07;
 const BG_SHIFT = -16;
 const MAX_PARTICLES = 20;
+// Fraction of the artwork height where the robot's nose sits; the form card
+// header is pinned here (see --rls-nose-y).
+const NOSE_FRAC_Y = 0.4;
 
 // verdict -> rgb (used on /result via the verdict prop)
 const VERDICT_COLORS = {
@@ -225,6 +228,15 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
             y: oy + BG_SCALE * (epy - oy) + BG_SCALE * ty,
           };
         });
+        // Publish the robot's nose Y (same cover transform as the eyes) so the
+        // pages can pin the form card's header level with the nose and never
+        // let it drift above.
+        const noseYbase = NOSE_FRAC_Y * dispH;
+        const noseY = oy + BG_SCALE * (noseYbase - oy) + BG_SCALE * ty;
+        document.documentElement.style.setProperty(
+          '--rls-nose-y',
+          `${Math.max(0, Math.round(noseY))}px`
+        );
         eyePts.forEach((p, i) => {
           const el = eyeRefs[i].current;
           if (el) {
@@ -311,7 +323,7 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
           top: 0;
           left: 0;
           width: 100%;
-          height: 100%;
+          height: 100vh;
           z-index: 0;
           overflow: hidden;
           background: #0b1120;

@@ -44,27 +44,16 @@ export default function Result(props) {
         {...rest}
       />
 
-      {/* Full-viewport scene wrapper */}
-      <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#0B1120" }}>
+      {/* Scene wrapper: robot fills the first viewport; the report card sits
+          below the nose and the section grows/scrolls for tall verdicts. */}
+      <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", background: "#0B1120" }}>
 
         {/* 3D robot canvas — verdict drives eye/laser color */}
         <RobotScene mode="result" verdict={verdict} />
 
-        {/* Card overlay — left-aligned, vertically centred */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0, left: 0,
-            width: "100%", height: "100%",
-            display: "flex",
-            alignItems: "center",
-            pointerEvents: "none",
-            zIndex: 10,
-          }}
-        >
-          <div style={{ pointerEvents: "all", width: "100%" }}>
-            <ResultSection onVerdictChange={setVerdict} />
-          </div>
+        {/* Card in normal flow, pinned below the robot's nose */}
+        <div style={{ position: "relative", zIndex: 10, paddingTop: "var(--rls-nose-y, 40vh)" }}>
+          <ResultSection onVerdictChange={setVerdict} />
         </div>
       </div>
 

@@ -2,7 +2,9 @@ import { container, title } from "/styles/jss/nextjs-material-kit.js";
 
 import imagesStyle from "/styles/jss/nextjs-material-kit/imagesStyles.js";
 
-const profilePageStyle = {
+// Theme-aware so the profile surface follows the light/dark toggle instead of
+// being locked to a white panel with grey text.
+const profilePageStyle = (theme) => ({
   container,
   profile: {
     textAlign: "center",
@@ -16,7 +18,7 @@ const profilePageStyle = {
   description: {
     margin: "1.071rem auto 0",
     maxWidth: "600px",
-    color: "#999",
+    color: theme.palette.text.secondary,
     textAlign: "center !important"
   },
   name: {
@@ -24,18 +26,20 @@ const profilePageStyle = {
   },
   ...imagesStyle,
   main: {
-    background: "#FFFFFF",
+    background: theme.palette.background.paper,
+    color: theme.palette.text.primary,
     position: "relative",
     zIndex: "3"
   },
   mainRaised: {
     margin: "-60px 30px 0px",
     borderRadius: "12px",
-    boxShadow:
-      "0 16px 24px 2px rgba(0, 0, 0, 0.14), 0 6px 30px 5px rgba(0, 0, 0, 0.12), 0 8px 10px -5px rgba(0, 0, 0, 0.2)"
+    border: `1px solid ${theme.palette.divider}`,
+    boxShadow: theme.shadows[2]
   },
   title: {
     ...title,
+    color: theme.palette.text.primary,
     display: "inline-block",
     position: "relative",
     marginTop: "30px",
@@ -51,12 +55,12 @@ const profilePageStyle = {
     height: "100%",
     lineHeight: "41px",
     fontSize: "20px",
-    color: "#999"
+    color: theme.palette.text.secondary
   },
   navWrapper: {
     margin: "20px auto 50px auto",
     textAlign: "center"
   }
-};
+});
 
 export default profilePageStyle;

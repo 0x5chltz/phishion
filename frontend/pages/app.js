@@ -14,13 +14,13 @@ import Button from "/components/CustomButtons/Button.js";
 import HeaderLinks from "/components/Header/HeaderLinks.js";
 import Parallax from "/components/Parallax/Parallax.js";
 import Seo from "/components/Seo/Seo.js";
+import { useAuth } from "/context/AuthContext.js";
 
 import styles from "/styles/jss/nextjs-material-kit/pages/landingPage.js";
 
 // Sections for this page
 import VerdictSection from "/pages-sections/LandingPage-Sections/VerdictSection.js";
 import HowSection from "/pages-sections/LandingPage-Sections/HowSection.js";
-import TeamSection from "/pages-sections/LandingPage-Sections/TeamSection.js";
 
 const dashboardRoutes = [];
 
@@ -28,6 +28,7 @@ const useStyles = makeStyles(styles);
 
 export default function LandingPage(props) {
   const classes = useStyles();
+  const { authenticated } = useAuth();
   const { ...rest } = props;
   return (
     <div>
@@ -63,9 +64,11 @@ export default function LandingPage(props) {
                     Inspect a URL
                   </Button>
                 </Link>
-                <Link href="/login">
-                  <a className={classes.heroSecondary}>Sign in</a>
-                </Link>
+                {!authenticated && (
+                  <Link href="/login">
+                    <a className={classes.heroSecondary}>Sign in</a>
+                  </Link>
+                )}
               </div>
             </GridItem>
           </GridContainer>
@@ -75,7 +78,6 @@ export default function LandingPage(props) {
         <div className={classes.contentContainer}>
           <VerdictSection />
           <HowSection />
-          <TeamSection />
         </div>
       </div>
       <Footer />

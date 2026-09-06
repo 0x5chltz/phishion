@@ -53,25 +53,11 @@ export default function Domains(props) {
       />
       <h1 style={srOnly}>Subdomain Discovery</h1>
 
-      <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#0B1120" }}>
+      <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", background: "#0B1120" }}>
         <RobotScene mode="inspect" verdict={null} />
 
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            pointerEvents: "none",
-            zIndex: 10,
-          }}
-        >
-          <div style={{ pointerEvents: "all", width: "100%" }}>
-            <DomainSection />
-          </div>
+        <div style={{ position: "relative", zIndex: 10, paddingTop: "var(--rls-nose-y, 40vh)" }}>
+          <DomainSection />
         </div>
       </div>
       <Footer />

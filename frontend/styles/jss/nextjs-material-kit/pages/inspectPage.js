@@ -18,8 +18,10 @@ const inspectPageStyle = {
     ...container,
     zIndex: "2",
     position: "relative",
-    paddingTop: "20vh",
-    paddingBottom: "20vh"
+    // Vertical placement is driven by the page overlay (pinned to the robot's
+    // nose via --rls-nose-y); keep only a little breathing room here.
+    paddingTop: "0",
+    paddingBottom: "6vh"
   },
   cardHidden: {
     opacity: "0",

@@ -40,27 +40,16 @@ export default function Inspect(props) {
         {...rest}
       />
 
-      {/* Full-viewport scene wrapper */}
-      <div style={{ position: "relative", height: "100vh", overflow: "hidden", background: "#0B1120" }}>
+      {/* Scene wrapper: robot fills the first viewport, the card sits below the
+          nose and the section grows/scrolls if its content is tall. */}
+      <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", background: "#0B1120" }}>
 
-        {/* 3D robot canvas — fills entire background */}
+        {/* 3D robot canvas — viewport-tall background */}
         <RobotScene mode="inspect" verdict={null} />
 
-        {/* Card overlay — left-aligned, vertically centred, above canvas */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0, left: 0,
-            width: "100%", height: "100%",
-            display: "flex",
-            alignItems: "center",
-            pointerEvents: "none",
-            zIndex: 10,
-          }}
-        >
-          <div style={{ pointerEvents: "all", width: "100%" }}>
-            <InspectSection />
-          </div>
+        {/* Card in normal flow, pinned below the robot's nose */}
+        <div style={{ position: "relative", zIndex: 10, paddingTop: "var(--rls-nose-y, 40vh)" }}>
+          <InspectSection />
         </div>
       </div>
 
