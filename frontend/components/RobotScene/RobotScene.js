@@ -1,461 +1,420 @@
 'use client';
 import { useEffect, useRef } from 'react';
 
-// Color map: verdict -> laser hex
+// 2D robot laser scene: the robot artwork as a pointer-reactive background,
+// with soft, flowing "smoke" laser beams from the eyes converging on the form
+// card. Drop-in replacement for the previous Three.js RobotScene: same props
+// ({ mode, verdict }) and the same card contract (a `.laser-card` element that
+// may publish `data-laser-status`).
+
+const IMG = '/img/background_inspect2.png';
+const IMG_W = 1536;
+const IMG_H = 1024;
+// Eye centres as a fraction of the artwork (measured from the glowing pupils).
+const EYES = [
+  { x: 0.6155, y: 0.2643 }, // viewer-left eye
+  { x: 0.6893, y: 0.26 }, // viewer-right eye
+];
+
+const BG_SCALE = 1.07;
+const BG_SHIFT = -16;
+const MAX_PARTICLES = 20;
+
+// verdict -> rgb (used on /result via the verdict prop)
 const VERDICT_COLORS = {
-  malicious: 0xef4444,
-  suspicious: 0xf59e0b,
-  clean: 0x22c55e,
-  loading: 0x3b82f6,
-  default: 0xffffff,
+  malicious: [239, 68, 68],
+  suspicious: [245, 158, 11],
+  clean: [34, 197, 94],
+  loading: [34, 211, 255],
+  default: [34, 211, 255],
 };
-
-// A card can publish its own state through data-laser-status, so a page does
-// not have to thread a verdict prop down into the scene. Pages that do pass a
-// verdict keep working: the attribute simply wins wherever it is present.
+// data-laser-status -> rgb (a card may publish its own state)
 const STATUS_COLORS = {
-  idle: 0xffffff,
-  scanning: 0x3b82f6,
-  safe: 0x22c55e,
-  suspicious: 0xf59e0b,
-  danger: 0xef4444,
-  error: 0xf97316,
+  idle: [34, 211, 255],
+  scanning: [255, 196, 64],
+  safe: [46, 229, 157],
+  suspicious: [255, 176, 40],
+  danger: [255, 74, 74],
+  error: [255, 108, 60],
 };
+const DEFAULT_COLOR = [34, 211, 255];
 
-function laserHexFor(mode, verdict, status) {
+function laserRgbFor(mode, verdict, status) {
   if (status && status in STATUS_COLORS) return STATUS_COLORS[status];
-  if (mode === 'inspect') return VERDICT_COLORS.default;
-  return VERDICT_COLORS[verdict] ?? VERDICT_COLORS.loading;
+  if (verdict && verdict in VERDICT_COLORS) return VERDICT_COLORS[verdict];
+  return DEFAULT_COLOR;
 }
-
-// Where the beam aims when the card cannot be measured, in normalized device
-// coordinates. x is left of centre because the card sits in the left half.
-const FALLBACK_TARGET = { x: -0.45, top: 0.34, bottom: -0.34 };
 
 export default function RobotScene({ mode = 'inspect', verdict = null }) {
   const mountRef = useRef(null);
-  // Latest props, so the animation loop can recolour without being rebuilt.
+  const bgRef = useRef(null);
+  const canvasRef = useRef(null);
+  const eyeRefs = [useRef(null), useRef(null)];
+  const impactRef = useRef(null);
+
   const modeRef = useRef(mode);
   const verdictRef = useRef(verdict);
-  // Status read off the targeted card, refreshed with every measurement.
-  const statusRef = useRef(null);
-  // Holds everything the colour effect needs to reach without rebuilding the
-  // scene, so changing verdict does not tear down and re-create the canvas.
-  const sceneRef = useRef(null);
-
-  useEffect(() => {
-    let disposed = false;
-    let cleanupFn = null;
-
-    async function init() {
-      const THREE = await import('three');
-      if (disposed || !mountRef.current) return;
-
-      const mount = mountRef.current;
-      const W = mount.clientWidth || 1;
-      const H = mount.clientHeight || 1;
-
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(W, H);
-      renderer.shadowMap.enabled = true;
-      mount.appendChild(renderer.domElement);
-
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0b1120);
-      scene.fog = new THREE.FogExp2(0x0b1120, 0.06);
-
-      const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 200);
-      camera.position.set(-5, 3.5, 9);
-      camera.lookAt(0, 2, 0);
-
-      scene.add(new THREE.AmbientLight(0x0b1120, 0.7));
-      const keyLight = new THREE.DirectionalLight(0x3b82f6, 1.2);
-      keyLight.position.set(-4, 8, 4);
-      keyLight.castShadow = true;
-      scene.add(keyLight);
-      const fillLight = new THREE.PointLight(0x1e293b, 0.9, 30);
-      fillLight.position.set(4, 3, -3);
-      scene.add(fillLight);
-
-      // ── Materials ──────────────────────────────────────────────────────────
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.85, roughness: 0.15 });
-      const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.1 });
-      const panelMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.3 });
-
-      const hex = laserHexFor(mode, verdict);
-      const eyeMat = new THREE.MeshStandardMaterial({
-        color: hex,
-        emissive: new THREE.Color(hex),
-        emissiveIntensity: 4,
-      });
-      const tipMat = eyeMat.clone();
-      // Wide, soft cone of light. Additive so overlapping beams read as glow.
-      const haloMat = new THREE.MeshBasicMaterial({
-        color: hex,
-        transparent: true,
-        opacity: 0.1,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      });
-      // The bright filament down the middle of the cone.
-      const coreMat = new THREE.MeshBasicMaterial({
-        color: hex,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-      });
-
-      const disposables = [bodyMat, darkMat, panelMat, eyeMat, tipMat, haloMat, coreMat];
-
-      // ── Build helpers ──────────────────────────────────────────────────────
-      const track = (geo) => {
-        disposables.push(geo);
-        return geo;
-      };
-      const mesh = (geo, mat, x = 0, y = 0, z = 0) => {
-        const m = new THREE.Mesh(track(geo), mat);
-        m.position.set(x, y, z);
-        m.castShadow = true;
-        return m;
-      };
-      const box = (w, h, d, mat, x, y, z) => mesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z);
-      const capsule = (r, len, mat, x, y, z) =>
-        mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat, x, y, z);
-      const ball = (r, mat, x, y, z) => mesh(new THREE.SphereGeometry(r, 18, 14), mat, x, y, z);
-
-      // ── Humanoid ───────────────────────────────────────────────────────────
-      const robot = new THREE.Group();
-      scene.add(robot);
-
-      // Leg: hip -> thigh -> knee -> shin -> ankle -> foot. Grouped at the hip
-      // so the whole limb can swing from one pivot.
-      const buildLeg = (side) => {
-        const g = new THREE.Group();
-        g.position.set(0.34 * side, 2.02, 0);
-        g.add(ball(0.19, panelMat, 0, 0, 0));
-        g.add(capsule(0.16, 0.62, bodyMat, 0, -0.47, 0));
-        g.add(ball(0.15, darkMat, 0, -0.92, 0));
-        g.add(capsule(0.13, 0.6, bodyMat, 0, -1.36, 0));
-        g.add(ball(0.12, darkMat, 0, -1.8, 0));
-        g.add(box(0.3, 0.14, 0.56, darkMat, 0, -1.9, 0.12));
-        return g;
-      };
-      const legL = buildLeg(-1);
-      const legR = buildLeg(1);
-      robot.add(legL, legR);
-
-      // Torso
-      robot.add(box(0.72, 0.34, 0.44, panelMat, 0, 2.16, 0)); // pelvis
-      robot.add(capsule(0.22, 0.24, darkMat, 0, 2.52, 0)); // waist / spine
-      const chest = box(1.0, 0.98, 0.56, bodyMat, 0, 3.08, 0);
-      robot.add(chest);
-      robot.add(box(0.56, 0.44, 0.1, panelMat, 0, 3.16, 0.31)); // chest plate
-      for (let i = 0; i < 3; i++) {
-        robot.add(box(0.44, 0.04, 0.12, darkMat, 0, 2.98 - i * 0.13, 0.32));
-      }
-      robot.add(box(0.86, 0.16, 0.42, panelMat, 0, 3.5, 0)); // clavicle bar
-
-      // Arm: shoulder -> upper arm -> elbow -> forearm -> hand.
-      const buildArm = (side) => {
-        const g = new THREE.Group();
-        g.position.set(0.6 * side, 3.4, 0);
-        g.add(ball(0.2, panelMat, 0, 0, 0));
-        g.add(capsule(0.13, 0.5, bodyMat, 0, -0.42, 0));
-        g.add(ball(0.12, darkMat, 0, -0.8, 0));
-        g.add(capsule(0.11, 0.46, bodyMat, 0, -1.14, 0));
-        g.add(ball(0.11, darkMat, 0, -1.48, 0)); // hand
-        g.add(box(0.05, 0.2, 0.14, darkMat, 0.04 * side, -1.62, 0.03)); // fingers
-        return g;
-      };
-      const armL = buildArm(-1);
-      const armR = buildArm(1);
-      robot.add(armL, armR);
-
-      // Neck and head
-      robot.add(capsule(0.11, 0.14, darkMat, 0, 3.68, 0));
-      const head = new THREE.Group();
-      head.position.set(0, 4.02, 0);
-      robot.add(head);
-
-      head.add(mesh(new THREE.SphereGeometry(0.42, 22, 18), bodyMat, 0, 0, 0));
-      head.add(box(0.62, 0.3, 0.12, darkMat, 0, 0.02, 0.34)); // visor recess
-      head.add(box(0.66, 0.1, 0.1, panelMat, 0, 0.24, 0.33)); // brow
-      head.add(box(0.36, 0.12, 0.1, panelMat, 0, -0.28, 0.3)); // chin vent
-      head.add(box(0.08, 0.26, 0.2, panelMat, -0.4, 0.02, 0)); // ear
-      head.add(box(0.08, 0.26, 0.2, panelMat, 0.4, 0.02, 0));
-
-      const antenna = mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.42, 6), panelMat, 0, 0.6, 0);
-      const antennaTip = new THREE.Mesh(track(new THREE.SphereGeometry(0.06, 10, 10)), tipMat);
-      antennaTip.position.y = 0.25;
-      antenna.add(antennaTip);
-      head.add(antenna);
-
-      // Eyes sit on the visor. Beam origins are read from these each frame.
-      const eyeGeo = track(new THREE.SphereGeometry(0.075, 14, 12));
-      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-      const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-      eyeL.position.set(-0.15, 0.03, 0.39);
-      eyeR.position.set(0.15, 0.03, 0.39);
-      head.add(eyeL, eyeR);
-
-      const eyeLight = new THREE.PointLight(hex, 2.2, 7);
-      eyeLight.position.set(0, 0.03, 0.7);
-      head.add(eyeLight);
-
-      // ── Eye lasers ─────────────────────────────────────────────────────────
-      // Cones live on the scene, not the head. Parented to the head they would
-      // inherit its sway and drift off the card; here the aim is set explicitly
-      // every frame so it stays locked on the card no matter how the head moves.
-      //
-      // Geometry is authored apex-at-origin pointing down +Z, because
-      // Object3D.lookAt aims +Z at the target. Length and spread then come from
-      // scale, so one geometry serves any distance.
-      const makeCone = (radius, mat) => {
-        const g = new THREE.ConeGeometry(radius, 1, 26, 1, true);
-        g.translate(0, -0.5, 0); // apex to origin
-        g.rotateX(-Math.PI / 2); // body along +Z
-        return new THREE.Mesh(track(g), mat);
-      };
-
-      const beams = [eyeL, eyeR].map((eye) => {
-        const pivot = new THREE.Group();
-        const halo = makeCone(1, haloMat); // the wide light spread
-        const core = makeCone(0.12, coreMat); // the bright filament
-        pivot.add(halo, core);
-        scene.add(pivot);
-        return { eye, pivot, halo, core };
-      });
-
-      // Small glow where the beam lands, so the sweep reads as hitting something.
-      const hitMat = new THREE.MeshBasicMaterial({
-        color: hex,
-        transparent: true,
-        opacity: 0.35,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-      });
-      disposables.push(hitMat);
-      const hit = new THREE.Mesh(track(new THREE.CircleGeometry(0.42, 24)), hitMat);
-      scene.add(hit);
-
-      const grid = new THREE.GridHelper(60, 60, 0x1e293b, 0x0f172a);
-      scene.add(grid);
-      disposables.push(grid.geometry, grid.material);
-
-      const pCount = 200;
-      const pGeo = track(new THREE.BufferGeometry());
-      const pPos = new Float32Array(pCount * 3);
-      for (let i = 0; i < pCount * 3; i++) pPos[i] = (Math.random() - 0.5) * 30;
-      pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-      const pMat = new THREE.PointsMaterial({ color: 0x3b82f6, size: 0.06, transparent: true, opacity: 0.6 });
-      disposables.push(pMat);
-      scene.add(new THREE.Points(pGeo, pMat));
-
-      robot.rotation.y = -Math.PI * 0.18;
-      robot.position.set(1.2, 0, 0);
-
-      // ── Where is the card? ─────────────────────────────────────────────────
-      // Measured from the DOM so the sweep tracks the real card, which is a
-      // different height on /inspect than on /result once results render.
-      let target = { ...FALLBACK_TARGET };
-
-      const measureCard = () => {
-        const host = mount.parentElement;
-        if (!host) return;
-        // A card opts into being the target by carrying the laser-card class,
-        // which is exact and also carries the status the beam colours from.
-        // Without it, fall back to guessing at the tallest card-like box.
-        const marked = host.querySelector('.laser-card');
-        statusRef.current = marked ? marked.getAttribute('data-laser-status') : null;
-        let best = null;
-        if (marked) {
-          const r = marked.getBoundingClientRect();
-          if (r.width >= 80 && r.height >= 60) best = r;
-        }
-        if (!best) {
-          const candidates = host.querySelectorAll('form, [class*="card"], [class*="Card"]');
-          for (const el of candidates) {
-            const r = el.getBoundingClientRect();
-            if (r.width < 80 || r.height < 60) continue;
-            if (!best || r.height > best.height) best = r;
-          }
-        }
-        const hostRect = host.getBoundingClientRect();
-        if (!best || !hostRect.width || !hostRect.height) {
-          target = { ...FALLBACK_TARGET };
-          return;
-        }
-        const toNdcX = (px) => ((px - hostRect.left) / hostRect.width) * 2 - 1;
-        const toNdcY = (py) => -(((py - hostRect.top) / hostRect.height) * 2 - 1);
-        // Inset slightly so the beam sweeps the card face, not past its edges.
-        const inset = best.height * 0.12;
-        target = {
-          x: toNdcX(best.left + best.width * 0.62),
-          top: toNdcY(best.top + inset),
-          bottom: toNdcY(best.bottom - inset),
-        };
-      };
-
-      measureCard();
-
-      const onResize = () => {
-        if (!mountRef.current) return;
-        const w = mountRef.current.clientWidth || 1;
-        const h = mountRef.current.clientHeight || 1;
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-        measureCard();
-      };
-      window.addEventListener('resize', onResize);
-
-      const eyeWorld = new THREE.Vector3();
-      const aim = new THREE.Vector3();
-      const up = new THREE.Vector3(0, 1, 0);
-
-      const materials = [eyeMat, tipMat, haloMat, coreMat, hitMat];
-      const lights = [eyeLight];
-      let appliedHex = null;
-
-      // Recolours in place, and only on a real change. Called both from the
-      // animation loop, for a card that publishes its own status, and from the
-      // prop effect below, so neither path rebuilds the canvas mid-scan.
-      const applyHex = (hex) => {
-        if (hex === appliedHex) return;
-        appliedHex = hex;
-        const color = new THREE.Color(hex);
-        for (const m of materials) {
-          if (m.color) m.color.set(color);
-          if (m.emissive) m.emissive.set(color);
-        }
-        for (const l of lights) l.color.set(color);
-      };
-
-      sceneRef.current = { THREE, materials, lights, applyHex };
-
-      let t = 0;
-      let frame = 0;
-      let animId = 0;
-
-      const animate = () => {
-        animId = requestAnimationFrame(animate);
-        t += 0.016;
-        frame++;
-
-        // The card can change height as results load, so re-measure now and
-        // then rather than only on resize.
-        if (frame % 45 === 0) {
-          measureCard();
-          applyHex(laserHexFor(modeRef.current, verdictRef.current, statusRef.current));
-        }
-
-        robot.position.y = Math.sin(t * 0.7) * 0.07;
-
-        // Walk-idle: legs counter-swing against the arms.
-        const gait = Math.sin(t * 0.9);
-        armL.rotation.x = 0.1 + gait * 0.16;
-        armR.rotation.x = 0.1 - gait * 0.16;
-        armL.rotation.z = 0.1;
-        armR.rotation.z = -0.1;
-        legL.rotation.x = -gait * 0.08;
-        legR.rotation.x = gait * 0.08;
-
-        // Head holds its gaze on the card, so the sway is small.
-        head.rotation.y = Math.sin(t * 0.4) * 0.05;
-        head.rotation.x = Math.sin(t * 0.3) * 0.03;
-
-        // Vertical scan across the card: 0 at the top, 1 at the bottom.
-        const scan = (Math.sin(t * 1.15) + 1) / 2;
-        const ndcY = target.top + (target.bottom - target.top) * scan;
-        aim.set(target.x, ndcY, 0.5).unproject(camera);
-
-        for (const b of beams) {
-          b.eye.getWorldPosition(eyeWorld);
-          b.pivot.position.copy(eyeWorld);
-          b.pivot.up.copy(up);
-          b.pivot.lookAt(aim);
-          const dist = eyeWorld.distanceTo(aim);
-          // Spread widens with distance so the far end covers the card face.
-          const spread = 0.06 + dist * 0.028;
-          b.halo.scale.set(spread, spread, dist);
-          b.core.scale.set(spread * 0.5, spread * 0.5, dist);
-        }
-
-        hit.position.copy(aim);
-        hit.lookAt(camera.position);
-        const pulse = 0.28 + Math.sin(t * 2.2) * 0.1;
-        hitMat.opacity = pulse;
-
-        tipMat.emissiveIntensity = 2.5 + Math.sin(t * 3) * 1.5;
-        eyeMat.emissiveIntensity = 3.5 + Math.sin(t * 2.2) * 0.8;
-        eyeLight.intensity = 2 + Math.sin(t * 2.2) * 0.8;
-        haloMat.opacity = 0.08 + Math.sin(t * 2.2) * 0.03;
-        coreMat.opacity = 0.5 + Math.sin(t * 2.2) * 0.12;
-
-        const pos = pGeo.attributes.position;
-        for (let i = 0; i < pCount; i++) {
-          pos.array[i * 3 + 1] += 0.012;
-          if (pos.array[i * 3 + 1] > 12) pos.array[i * 3 + 1] = -6;
-        }
-        pos.needsUpdate = true;
-
-        camera.position.x = -5 + Math.sin(t * 0.12) * 0.6;
-        camera.position.y = 3.5 + Math.sin(t * 0.09) * 0.2;
-        camera.lookAt(0, 2, 0);
-
-        renderer.render(scene, camera);
-      };
-      animate();
-
-      cleanupFn = () => {
-        window.removeEventListener('resize', onResize);
-        cancelAnimationFrame(animId);
-        sceneRef.current = null;
-        for (const d of disposables) {
-          if (d && typeof d.dispose === 'function') d.dispose();
-        }
-        renderer.dispose();
-        if (renderer.domElement.parentNode === mount) {
-          mount.removeChild(renderer.domElement);
-        }
-      };
-    }
-
-    init();
-
-    return () => {
-      disposed = true;
-      if (cleanupFn) cleanupFn();
-    };
-    // Built once. Colour changes are handled below so a new verdict does not
-    // tear down the canvas mid-scan.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const pointer = useRef({ x: 0, y: 0 });
+  const smooth = useRef({ x: 0, y: 0 });
+  const beamParticles = useRef([[], []]);
+  const beamColor = useRef([...DEFAULT_COLOR]);
 
   useEffect(() => {
     modeRef.current = mode;
     verdictRef.current = verdict;
-    const s = sceneRef.current;
-    if (!s) return;
-    s.applyHex(laserHexFor(mode, verdict, statusRef.current));
   }, [mode, verdict]);
 
+  useEffect(() => {
+    const mount = mountRef.current;
+    const canvas = canvasRef.current;
+    if (!mount || !canvas) return undefined;
+    const ctx = canvas.getContext('2d');
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    let canvasW = 0;
+    let canvasH = 0;
+    let dpr = 1;
+
+    const onMove = (event) => {
+      const rect = mount.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      pointer.current.x = (event.clientX - rect.left) / rect.width - 0.5;
+      pointer.current.y = (event.clientY - rect.top) / rect.height - 0.5;
+    };
+    window.addEventListener('mousemove', onMove);
+
+    // One beam: a softly undulating light core + thin flowing smoke.
+    const drawBeam = (eye, target, particles, phase, time, rgb) => {
+      const [r0, g0, b0] = rgb;
+      const dx = target.x - eye.x;
+      const dy = target.y - eye.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const px = -uy;
+      const py = ux;
+      const amp = Math.min(9, len * 0.02);
+
+      const offsetAt = (t) => {
+        const env = Math.sin(t * Math.PI);
+        return (
+          env *
+          (amp * Math.sin(t * 3 * Math.PI - time * 0.0011 + phase) +
+            amp * 0.5 * Math.sin(t * 6 * Math.PI - time * 0.0007 + phase * 1.7))
+        );
+      };
+
+      const N = 26;
+      const pts = [];
+      for (let i = 0; i <= N; i += 1) {
+        const t = i / N;
+        const along = t * len;
+        const off = reduceMotion ? 0 : offsetAt(t);
+        pts.push([eye.x + ux * along + px * off, eye.y + uy * along + py * off]);
+      }
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      const tint = (a) => `rgba(${r0},${g0},${b0},${a})`;
+      const light = (a) =>
+        `rgba(${Math.round((r0 + 510) / 3)},${Math.round((g0 + 510) / 3)},${Math.round(
+          (b0 + 510) / 3
+        )},${a})`;
+      const strokes = [
+        { w: 26, color: tint(0.05), blur: 22 },
+        { w: 12, color: tint(0.12), blur: 10 },
+        { w: 4, color: light(0.5), blur: 6 },
+        { w: 1.5, color: 'rgba(255,255,255,0.9)', blur: 3 },
+      ];
+      strokes.forEach((s) => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.w;
+        ctx.shadowColor = tint(0.6);
+        ctx.shadowBlur = s.blur;
+        ctx.stroke();
+      });
+      ctx.shadowBlur = 0;
+
+      if (!reduceMotion) {
+        if (particles.length < MAX_PARTICLES && Math.random() < 0.45) {
+          particles.push({
+            p: Math.random() * 0.05,
+            off: (Math.random() - 0.5) * 5,
+            drift: (Math.random() - 0.5) * 0.32,
+            speed: 0.0015 + Math.random() * 0.0022,
+            size0: 4 + Math.random() * 4,
+            grow: 14 + Math.random() * 12,
+          });
+        }
+        for (let i = particles.length - 1; i >= 0; i -= 1) {
+          const m = particles[i];
+          m.p += m.speed;
+          m.off += m.drift;
+          if (m.p >= 1) {
+            particles.splice(i, 1);
+            continue;
+          }
+          const along = m.p * len;
+          const lateral = m.off + offsetAt(m.p);
+          const x = eye.x + ux * along + px * lateral;
+          const y = eye.y + uy * along + py * lateral;
+          const a = Math.sin(m.p * Math.PI) * 0.32;
+          const rad = m.size0 + m.p * m.grow;
+          const grad = ctx.createRadialGradient(x, y, 0, x, y, rad);
+          grad.addColorStop(0, light(a * 0.5));
+          grad.addColorStop(0.4, tint(a * 0.16));
+          grad.addColorStop(1, tint(0));
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(x, y, rad, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    };
+
+    let raf;
+    const render = () => {
+      const rect = mount.getBoundingClientRect();
+      const cw = rect.width;
+      const ch = rect.height;
+      if (cw && ch) {
+        const nextDpr = Math.min(window.devicePixelRatio || 1, 2);
+        if (cw !== canvasW || ch !== canvasH || nextDpr !== dpr) {
+          canvasW = cw;
+          canvasH = ch;
+          dpr = nextDpr;
+          canvas.width = Math.round(cw * dpr);
+          canvas.height = Math.round(ch * dpr);
+          canvas.style.width = `${cw}px`;
+          canvas.style.height = `${ch}px`;
+        }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, cw, ch);
+
+        smooth.current.x += (pointer.current.x - smooth.current.x) * 0.08;
+        smooth.current.y += (pointer.current.y - smooth.current.y) * 0.08;
+        const sx = smooth.current.x;
+        const sy = smooth.current.y;
+
+        const tx = sx * BG_SHIFT;
+        const ty = sy * BG_SHIFT;
+        if (bgRef.current) {
+          bgRef.current.style.transform = `scale(${BG_SCALE}) translate(${tx}px, ${ty}px)`;
+        }
+
+        const scale = Math.max(cw / IMG_W, ch / IMG_H);
+        const dispW = IMG_W * scale;
+        const dispH = IMG_H * scale;
+        const offX = (cw - dispW) / 2;
+        const ox = cw / 2;
+        const oy = ch / 2;
+        const eyePts = EYES.map((e) => {
+          const epx = offX + e.x * dispW;
+          const epy = e.y * dispH;
+          return {
+            x: ox + BG_SCALE * (epx - ox) + BG_SCALE * tx,
+            y: oy + BG_SCALE * (epy - oy) + BG_SCALE * ty,
+          };
+        });
+        eyePts.forEach((p, i) => {
+          const el = eyeRefs[i].current;
+          if (el) {
+            el.style.left = `${p.x}px`;
+            el.style.top = `${p.y}px`;
+          }
+        });
+
+        // Find the card (published by the page) relative to the mount.
+        const host = mount.parentElement || document;
+        let card = host.querySelector && host.querySelector('.laser-card');
+        let status = null;
+        if (card) {
+          status = card.getAttribute('data-laser-status');
+        } else if (host.querySelectorAll) {
+          let best = null;
+          let bestH = 0;
+          host.querySelectorAll('form, [class*="card"], [class*="Card"]').forEach((el) => {
+            const r = el.getBoundingClientRect();
+            if (r.width < 80 || r.height < 60) return;
+            if (r.height > bestH) {
+              best = el;
+              bestH = r.height;
+            }
+          });
+          card = best;
+        }
+        let targetX = cw * 0.3;
+        let targetY = ch * 0.5;
+        if (card) {
+          const cr = card.getBoundingClientRect();
+          targetX = cr.left - rect.left + cr.width * 0.5;
+          targetY = cr.top - rect.top + Math.min(48, cr.height * 0.16);
+        }
+        if (impactRef.current) {
+          impactRef.current.style.left = `${targetX}px`;
+          impactRef.current.style.top = `${targetY}px`;
+        }
+
+        const targetColor = laserRgbFor(modeRef.current, verdictRef.current, status);
+        const col = beamColor.current;
+        for (let i = 0; i < 3; i += 1) col[i] += (targetColor[i] - col[i]) * 0.05;
+        const rgb = [Math.round(col[0]), Math.round(col[1]), Math.round(col[2])];
+        mount.style.setProperty('--rls-rgb', `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`);
+
+        const target = { x: targetX, y: targetY };
+        const now = performance.now();
+        eyePts.forEach((eye, i) =>
+          drawBeam(eye, target, beamParticles.current[i], i * 2.1, now, rgb)
+        );
+      }
+      raf = window.requestAnimationFrame(render);
+    };
+    raf = window.requestAnimationFrame(render);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener('mousemove', onMove);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div
-      ref={mountRef}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 0,
-        pointerEvents: 'none',
-      }}
-    />
+    <div className="robot-laser-scene" ref={mountRef}>
+      <div className="rls-bg" ref={bgRef} style={{ backgroundImage: `url(${IMG})` }} />
+      <div className="rls-grid" />
+      <div className="rls-vignette" />
+      <canvas className="rls-lasers" ref={canvasRef} />
+      <div className="rls-eye" ref={eyeRefs[0]} />
+      <div className="rls-eye" ref={eyeRefs[1]} />
+      <div className="rls-impact" ref={impactRef} />
+
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .robot-laser-scene {
+          --rls-rgb: 34, 211, 255;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 0;
+          overflow: hidden;
+          background: #0b1120;
+          pointer-events: none;
+        }
+        .robot-laser-scene .rls-bg {
+          position: absolute;
+          inset: 0;
+          background-size: cover;
+          background-position: center top;
+          transform-origin: center center;
+          will-change: transform;
+          z-index: 1;
+        }
+        .robot-laser-scene .rls-grid {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          opacity: 0.35;
+          background-image: linear-gradient(rgba(var(--rls-rgb), 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(var(--rls-rgb), 0.06) 1px, transparent 1px);
+          background-size: 44px 44px;
+          -webkit-mask-image: radial-gradient(70% 60% at 30% 55%, #000 0%, transparent 80%);
+          mask-image: radial-gradient(70% 60% at 30% 55%, #000 0%, transparent 80%);
+        }
+        .robot-laser-scene .rls-vignette {
+          position: absolute;
+          inset: 0;
+          z-index: 2;
+          background: radial-gradient(
+            120% 90% at 68% 30%,
+            rgba(0, 0, 0, 0) 35%,
+            rgba(0, 0, 0, 0.35) 75%,
+            rgba(0, 0, 0, 0.72) 100%
+          );
+        }
+        .robot-laser-scene .rls-lasers {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 4;
+        }
+        .robot-laser-scene .rls-eye {
+          position: absolute;
+          width: 22px;
+          height: 22px;
+          margin: -11px 0 0 -11px;
+          z-index: 5;
+          border-radius: 50%;
+          background: radial-gradient(
+            circle,
+            #fff 0%,
+            rgba(var(--rls-rgb), 0.85) 30%,
+            rgba(var(--rls-rgb), 0.9) 52%,
+            rgba(var(--rls-rgb), 0) 74%
+          );
+          filter: drop-shadow(0 0 9px rgba(var(--rls-rgb), 1))
+            drop-shadow(0 0 20px rgba(var(--rls-rgb), 0.6));
+          animation: rlsEyePulse 2.4s ease-in-out infinite;
+        }
+        @keyframes rlsEyePulse {
+          0%,
+          100% {
+            opacity: 0.9;
+            transform: scale(0.92);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.14);
+          }
+        }
+        .robot-laser-scene .rls-impact {
+          position: absolute;
+          width: 130px;
+          height: 130px;
+          margin: -65px 0 0 -65px;
+          z-index: 4;
+          background: radial-gradient(
+            circle,
+            rgba(255, 255, 255, 0.9) 0%,
+            rgba(var(--rls-rgb), 0.95) 20%,
+            rgba(var(--rls-rgb), 0.22) 46%,
+            rgba(var(--rls-rgb), 0) 70%
+          );
+          filter: blur(2px);
+          animation: rlsImpact 1.8s ease-in-out infinite;
+        }
+        @keyframes rlsImpact {
+          0%,
+          100% {
+            opacity: 0.6;
+            transform: scale(0.85) rotate(0deg);
+          }
+          50% {
+            opacity: 0.95;
+            transform: scale(1.12) rotate(180deg);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .robot-laser-scene .rls-eye,
+          .robot-laser-scene .rls-impact {
+            animation: none !important;
+          }
+        }
+      `,
+        }}
+      />
+    </div>
   );
 }
