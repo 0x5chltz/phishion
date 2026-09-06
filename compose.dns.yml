@@ -1,0 +1,28 @@
+# Optional DNS override for hosts where the containers cannot resolve names.
+#
+# Docker copies the host /etc/resolv.conf into containers but drops loopback
+# nameservers, so a machine that resolves through a local stub (systemd-resolved
+# on 127.0.0.53) hands its containers only the remaining entries. If those are a
+# VPN's internal resolvers, unreachable from the bridge network, name resolution
+# fails and the backend cannot reach VirusTotal or SecurityTrails. glibc also
+# consults only the first three nameservers, so a working public resolver listed
+# fourth is never tried.
+#
+# This file points the containers at a resolver that is reachable from the
+# bridge network. Service discovery is unaffected: on a user-defined network the
+# containers still use Docker's embedded resolver for names like "db", and this
+# only sets the upstream it forwards to.
+#
+# Opt in explicitly, it is not loaded by default:
+#   docker compose -f compose.yml -f compose.dns.yml up -d
+#
+# The permanent fix is daemon-wide and needs root, see README (Docker DNS).
+services:
+  backend:
+    dns:
+      - ${CONTAINER_DNS:-8.8.8.8}
+      - ${CONTAINER_DNS_FALLBACK:-1.1.1.1}
+  frontend:
+    dns:
+      - ${CONTAINER_DNS:-8.8.8.8}
+      - ${CONTAINER_DNS_FALLBACK:-1.1.1.1}

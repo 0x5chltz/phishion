@@ -235,6 +235,48 @@ export PYTHONPATH=backend
 docker compose up --build
 ```
 
+#### Docker DNS
+
+If the build fails with `Temporary failure in name resolution`, or the app runs
+but every VirusTotal and SecurityTrails lookup fails, the containers cannot
+resolve names. Docker copies the host `/etc/resolv.conf` into containers but
+strips loopback nameservers, so a host that resolves through a local stub
+(`systemd-resolved` on `127.0.0.53`) passes on only the remaining entries. When
+those are a VPN's internal resolvers they are unreachable from the bridge
+network. glibc also reads only the first three nameservers, so a working public
+resolver listed fourth is never tried.
+
+Confirm it with:
+
+```bash
+docker run --rm python:3.12-slim getent hosts pypi.org     # fails
+docker run --rm --dns 8.8.8.8 python:3.12-slim getent hosts pypi.org   # works
+```
+
+The permanent fix is daemon-wide and needs root. Set a reachable resolver in
+`/etc/docker/daemon.json` and restart the daemon:
+
+```json
+{ "dns": ["8.8.8.8", "1.1.1.1"] }
+```
+
+```bash
+sudo systemctl restart docker
+```
+
+Without root you can still fix the containers at runtime, though not the build:
+
+```bash
+docker compose -f compose.yml -f compose.dns.yml up -d
+```
+
+`compose.dns.yml` is opt-in and is never loaded automatically. Override the
+servers with `CONTAINER_DNS` and `CONTAINER_DNS_FALLBACK`. Service discovery is
+unaffected, since Docker's embedded resolver still handles names like `db` and
+this only changes what it forwards upstream. `docker build` has no `--dns`
+flag, so a build on such a host needs either the daemon fix or `--add-host`
+entries for `pypi.org`, `files.pythonhosted.org` and `registry.npmjs.org`.
+
 ---
 
 ## Verification
