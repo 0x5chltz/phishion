@@ -47,8 +47,10 @@ export default function Inspect(props) {
         {/* 3D robot canvas — viewport-tall background */}
         <RobotScene mode="inspect" verdict={null} />
 
-        {/* Card in normal flow, pinned below the robot's nose */}
-        <div style={{ position: "relative", zIndex: 10, paddingTop: "var(--rls-nose-y, 40vh)" }}>
+        {/* Card centred in the first screen (nudged a little below centre); the
+            section flows so the page scrolls and the robot wallpaper scrolls
+            with it rather than staying fixed. */}
+        <div style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: "8vh", boxSizing: "border-box" }}>
           <InspectSection />
         </div>
       </div>
