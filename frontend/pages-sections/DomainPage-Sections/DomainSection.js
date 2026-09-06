@@ -71,8 +71,9 @@ export default function DomainSection() {
             }
           >
             <form onSubmit={handleLookup} className={classes.form}>
-              <CardHeader className={classes.cardHeader}>
+              <CardHeader className={classes.cardHeader + " laser-card-header"}>
                 <h4>Subdomain Discovery</h4>
+                <div className="laser-sublabel">// TARGET ACQUISITION</div>
               </CardHeader>
               <CardBody>
                 <CustomInput

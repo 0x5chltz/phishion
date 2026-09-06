@@ -100,8 +100,9 @@ export default function InspectSection() {
             data-laser-status={loading ? "scanning" : "idle"}
           >
             <form onSubmit={handleScan} className={classes.form}>
-              <CardHeader className={classes.cardHeader}>
+              <CardHeader className={classes.cardHeader + " laser-card-header"}>
                 <h1 className={classes.cardTitle}>Inspect a URL</h1>
+                <div className="laser-sublabel">// THREAT INSPECTION</div>
               </CardHeader>
 
               <CardBody>

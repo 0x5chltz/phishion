@@ -268,7 +268,11 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
         const col = beamColor.current;
         for (let i = 0; i < 3; i += 1) col[i] += (targetColor[i] - col[i]) * 0.05;
         const rgb = [Math.round(col[0]), Math.round(col[1]), Math.round(col[2])];
-        mount.style.setProperty('--rls-rgb', `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`);
+        // Publish on the document root so the form card (which lives outside
+        // this background layer) can recolour its HUD in sync with the laser.
+        const cssVar = `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
+        mount.style.setProperty('--rls-rgb', cssVar);
+        document.documentElement.style.setProperty('--rls-rgb', cssVar);
 
         const target = { x: targetX, y: targetY };
         const now = performance.now();
@@ -300,6 +304,7 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
       <style
         dangerouslySetInnerHTML={{
           __html: `
+        :root { --rls-rgb: 34, 211, 255; }
         .robot-laser-scene {
           --rls-rgb: 34, 211, 255;
           position: absolute;
@@ -406,9 +411,140 @@ export default function RobotScene({ mode = 'inspect', verdict = null }) {
             transform: scale(1.12) rotate(180deg);
           }
         }
+        /* ---------------- HUD form card (matches the laser theme) ------------- */
+        .laser-card {
+          position: relative;
+          background: linear-gradient(160deg, rgba(10, 20, 36, 0.82), rgba(6, 12, 22, 0.76)) !important;
+          -webkit-backdrop-filter: blur(10px) saturate(120%);
+          backdrop-filter: blur(10px) saturate(120%);
+          border: 1px solid rgba(var(--rls-rgb), 0.32) !important;
+          border-radius: 14px !important;
+          box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 34px rgba(var(--rls-rgb), 0.18),
+            inset 0 0 34px rgba(var(--rls-rgb), 0.05) !important;
+          animation: rlsCardEnergize 2.2s ease-in-out infinite;
+        }
+        @keyframes rlsCardEnergize {
+          0%,
+          100% {
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 26px rgba(var(--rls-rgb), 0.14),
+              inset 0 0 30px rgba(var(--rls-rgb), 0.045) !important;
+          }
+          50% {
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), 0 0 46px rgba(var(--rls-rgb), 0.3),
+              inset 0 0 40px rgba(var(--rls-rgb), 0.09) !important;
+          }
+        }
+        .laser-card::before {
+          content: "";
+          position: absolute;
+          inset: 8px;
+          border-radius: 10px;
+          pointer-events: none;
+          z-index: 3;
+          background: linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) left top / 22px 2px no-repeat,
+            linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) left top / 2px 22px no-repeat,
+            linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) right top / 22px 2px no-repeat,
+            linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) right top / 2px 22px no-repeat,
+            linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) left bottom / 22px 2px no-repeat,
+            linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) left bottom / 2px 22px no-repeat,
+            linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) right bottom / 22px 2px no-repeat,
+            linear-gradient(rgb(var(--rls-rgb)), rgb(var(--rls-rgb))) right bottom / 2px 22px no-repeat;
+          filter: drop-shadow(0 0 4px rgba(var(--rls-rgb), 0.55));
+          opacity: 0.9;
+        }
+        .laser-card-header {
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(120deg, rgba(6, 20, 34, 0.96), rgba(9, 32, 52, 0.96)) !important;
+          border: 1px solid rgba(var(--rls-rgb), 0.4) !important;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 26px rgba(var(--rls-rgb), 0.35) !important;
+        }
+        .laser-card-header::after {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 100%;
+          width: 40%;
+          background: linear-gradient(90deg, transparent, rgba(var(--rls-rgb), 0.28), transparent);
+          animation: rlsScan 3s linear infinite;
+        }
+        @keyframes rlsScan {
+          0% {
+            transform: translateX(-120%);
+          }
+          100% {
+            transform: translateX(320%);
+          }
+        }
+        .laser-card-header h1,
+        .laser-card-header h2,
+        .laser-card-header h3,
+        .laser-card-header h4 {
+          margin: 0;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: #eafaff !important;
+          text-shadow: 0 0 10px rgb(var(--rls-rgb)), 0 0 22px rgba(var(--rls-rgb), 0.55);
+        }
+        .laser-sublabel {
+          margin-top: 6px;
+          font-size: 11px;
+          letter-spacing: 0.28em;
+          color: rgb(var(--rls-rgb));
+          opacity: 0.8;
+          font-family: "Share Tech Mono", monospace;
+        }
+        .laser-card label,
+        .laser-card .MuiInputLabel-root {
+          color: #7fd6f0 !important;
+          letter-spacing: 0.12em;
+        }
+        .laser-card input {
+          color: #eafaff !important;
+        }
+        .laser-card .MuiInput-underline:before {
+          border-bottom-color: rgba(var(--rls-rgb), 0.4) !important;
+        }
+        .laser-card .MuiInput-underline:hover:not(.Mui-disabled):before {
+          border-bottom-color: rgb(var(--rls-rgb)) !important;
+        }
+        .laser-card .MuiInput-underline:after {
+          border-bottom-color: rgb(var(--rls-rgb)) !important;
+        }
+        .laser-card .MuiButton-root {
+          background: linear-gradient(
+            120deg,
+            rgba(var(--rls-rgb), 1),
+            rgba(var(--rls-rgb), 0.82) 55%,
+            rgba(var(--rls-rgb), 0.68)
+          ) !important;
+          color: #03121a !important;
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 22px rgba(var(--rls-rgb), 0.5) !important;
+          transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
+        }
+        .laser-card .MuiButton-root:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45), 0 0 34px rgba(var(--rls-rgb), 0.75) !important;
+          filter: brightness(1.08);
+        }
+        .laser-card .MuiButton-root:disabled {
+          filter: grayscale(0.4) brightness(0.8);
+        }
+        .laser-card .MuiTypography-root,
+        .laser-card p,
+        .laser-card li {
+          color: #c8dcec;
+        }
+        .laser-card .MuiDivider-root {
+          background-color: rgba(var(--rls-rgb), 0.25);
+        }
         @media (prefers-reduced-motion: reduce) {
           .robot-laser-scene .rls-eye,
-          .robot-laser-scene .rls-impact {
+          .robot-laser-scene .rls-impact,
+          .laser-card,
+          .laser-card-header::after {
             animation: none !important;
           }
         }

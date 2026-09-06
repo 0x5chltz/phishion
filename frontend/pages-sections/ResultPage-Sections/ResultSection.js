@@ -184,8 +184,9 @@ export default function ResultSection({ onVerdictChange }) {
         <GridContainer justify="flex-start">
           <GridItem xs={12} sm={6} md={4}>
             <Card className="laser-card" data-laser-status="scanning">
-              <CardHeader color="primary" className={classes.cardHeader}>
+              <CardHeader color="primary" className={classes.cardHeader + " laser-card-header"}>
                 <h4>Results</h4>
+                <div className="laser-sublabel">// SCANNING</div>
               </CardHeader>
               <CardBody>
                 <Divider style={{ marginBottom: 12 }} />
@@ -213,8 +214,9 @@ export default function ResultSection({ onVerdictChange }) {
       <GridContainer justify="flex-start">
         <GridItem xs={12} sm={6} md={4}>
           <Card className="laser-card" data-laser-status={laserStatus}>
-            <CardHeader className={classes.cardHeader}>
+            <CardHeader className={classes.cardHeader + " laser-card-header"}>
               <h4>Results</h4>
+              <div className="laser-sublabel">// SCAN REPORT</div>
             </CardHeader>
             <CardBody>
               <Divider style={{ marginBottom: 12}} />
