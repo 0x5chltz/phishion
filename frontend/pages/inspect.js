@@ -50,7 +50,7 @@ export default function Inspect(props) {
         {/* Card centred in the first screen (nudged a little below centre); the
             section flows so the page scrolls and the robot wallpaper scrolls
             with it rather than staying fixed. */}
-        <div style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: "8vh", boxSizing: "border-box" }}>
+        <div style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: "22vh", boxSizing: "border-box" }}>
           <InspectSection />
         </div>
       </div>

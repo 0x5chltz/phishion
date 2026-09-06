@@ -56,7 +56,7 @@ export default function Domains(props) {
       <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", background: "#0B1120" }}>
         <RobotScene mode="inspect" verdict={null} />
 
-        <div style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: "8vh", boxSizing: "border-box" }}>
+        <div style={{ position: "relative", zIndex: 10, minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: "22vh", boxSizing: "border-box" }}>
           <DomainSection />
         </div>
       </div>
